@@ -1,0 +1,46 @@
+
+name: Extract BEASTY Project
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract project ZIP
+        run: |
+          ZIP=$(find . -maxdepth 2 -iname "BEASTY-ANDROID.zip" | head -n 1)
+
+          if [ -z "$ZIP" ]; then
+            echo "BEASTY-ANDROID.zip not found"
+            exit 1
+          fi
+
+          mkdir -p /tmp/beasty
+          unzip -q "$ZIP" -d /tmp/beasty
+
+          PROJECT=$(find /tmp/beasty -type f \( -name "settings.gradle" -o -name "settings.gradle.kts" \) | head -n 1)
+
+          if [ -z "$PROJECT" ]; then
+            echo "Android project settings file not found"
+            exit 1
+          fi
+
+          ROOT=$(dirname "$PROJECT")
+          rsync -a --exclude='.git' "$ROOT/" ./
+
+      - name: Commit extracted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Extract BEASTY Android project" || echo "No changes"
+          git push
