@@ -42,10 +42,14 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/app/libs"
           cp sherpa_onnx/build/outputs/aar/sherpa_onnx-release.aar "$GITHUB_WORKSPACE/app/libs/sherpa-onnx-2.0.1.aar"
 
+      - name: Set up Gradle for BEASTY
+        run: |
+          wget -q https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
+          unzip -q gradle-8.11.1-bin.zip
+
       - name: Build BEASTY debug APK
         run: |
-          chmod +x ./gradlew
-          ./gradlew :app:assembleDebug --no-daemon
+          ./gradle-8.11.1/bin/gradle :app:assembleDebug --no-daemon
 
       - name: Upload BEASTY APK
         uses: actions/upload-artifact@v4
