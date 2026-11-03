@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feature/sherpa-onnx-wakeword
+      - feature/openwakeword-android
 
 concurrency:
   group: beasty-android-${{ github.ref }}
@@ -18,58 +18,23 @@ jobs:
       - name: Checkout BEASTY
         uses: actions/checkout@v4
 
-      - name: Checkout official sherpa-onnx source
-        uses: actions/checkout@v4
-        with:
-          repository: k2-fsa/sherpa-onnx
-          ref: v2.0.1
-          path: sherpa-onnx
+      - name: Download pinned Hey Jarvis ONNX models
+        run: |
+          set -e
+          MODEL_DIR="app/src/main/assets/openwakeword"
+          mkdir -p "$MODEL_DIR"
+          BASE="https://raw.githubusercontent.com/msnilsen/openwakeword-android/b49f3ab14cf558ac0c2aef73a5e6c83da7a08558/openwakeword/src/main/assets/openwakeword"
+          for MODEL in melspectrogram.onnx embedding_model.onnx hey_jarvis_v0.1.onnx; do
+            curl --fail --location --retry 3 "$BASE/$MODEL" -o "$MODEL_DIR/$MODEL"
+            test -s "$MODEL_DIR/$MODEL"
+          done
+          ls -lh "$MODEL_DIR"
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-
-      - name: Download official Android native libraries
-        working-directory: sherpa-onnx
-        run: |
-          wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-v2.0.1-android.tar.bz2
-          tar -xjf sherpa-onnx-v2.0.1-android.tar.bz2
-          mkdir -p android/SherpaOnnxAar/sherpa_onnx/src/main/jniLibs
-          cp -R jniLibs/* android/SherpaOnnxAar/sherpa_onnx/src/main/jniLibs/
-
-      - name: Build official sherpa-onnx AAR
-        working-directory: sherpa-onnx/android/SherpaOnnxAar
-        run: |
-          chmod +x ./gradlew
-          ./gradlew :sherpa_onnx:assembleRelease --no-daemon
-          mkdir -p "$GITHUB_WORKSPACE/app/libs"
-          cp sherpa_onnx/build/outputs/aar/sherpa_onnx-release.aar "$GITHUB_WORKSPACE/app/libs/sherpa-onnx-2.0.1.aar"
-
-      - name: Prepare offline Hey BEASTY keyword model
-        run: |
-          wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2
-          tar -xjf sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2
-          MODEL_DIR=sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01
-          ASSET_DIR=app/src/main/assets/$MODEL_DIR
-          mkdir -p "$ASSET_DIR"
-          cp "$MODEL_DIR"/encoder-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
-          cp "$MODEL_DIR"/decoder-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
-          cp "$MODEL_DIR"/joiner-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
-          cp "$MODEL_DIR"/tokens.txt "$ASSET_DIR"/
-          cp "$MODEL_DIR"/bpe.model "$ASSET_DIR"/
-          python3 -m pip install --quiet sherpa-onnx sentencepiece pypinyin
-          printf 'HEY JARVIS\n' > keywords_raw.txt
-          python3 sherpa-onnx/scripts/text2token.py \
-            --text keywords_raw.txt \
-            --tokens "$MODEL_DIR/tokens.txt" \
-            --tokens-type bpe \
-            --bpe-model "$MODEL_DIR/bpe.model" \
-            --output "$ASSET_DIR/keywords.txt"
-          sed -i 's/$/ :2.0 #0.25 @HEY JARVIS/' "$ASSET_DIR/keywords.txt"
-          echo "Generated official Sherpa keyword file:"
-          cat "$ASSET_DIR/keywords.txt"
 
       - name: Set up Gradle for BEASTY
         run: |
@@ -95,7 +60,7 @@ jobs:
       - name: Upload BEASTY APK
         uses: actions/upload-artifact@v4
         with:
-          name: BEASTY-debug-apk
+          name: BEASTY-openwakeword-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
