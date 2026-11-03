@@ -77,6 +77,7 @@ public class MainActivity extends Activity {
     private ScrollView scrollView;
     private TextView statusText;
     private TextView thinkingView;
+    private TextView coreGraphic;
 
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
@@ -292,7 +293,7 @@ public class MainActivity extends Activity {
         modeSpinner.setAdapter(modeAdapter);
         modeSpinner.setVisibility(View.GONE);
 
-        TextView coreGraphic = makeText("◎", 76, CYAN, true);
+        coreGraphic = makeText("◎", 76, CYAN, true);
         coreGraphic.setGravity(Gravity.CENTER);
         coreGraphic.setShadowLayer(dp(18), 0, 0, CYAN);
         root.addView(coreGraphic, new LinearLayout.LayoutParams(-1, dp(176)));
@@ -519,6 +520,11 @@ public class MainActivity extends Activity {
         if (statusText != null) {
             statusText.setText("● THINKING");
         }
+        if (coreGraphic != null) {
+            coreGraphic.setText("◉");
+            coreGraphic.setTextSize(82);
+            coreGraphic.setShadowLayer(dp(24), 0, 0, CYAN);
+        }
 
         thinkingView = makeText(
                 "◈ BEASTY IS THINKING...",
@@ -635,6 +641,11 @@ public class MainActivity extends Activity {
 
                 if (statusText != null) {
                     statusText.setText("● ONLINE");
+                }
+                if (coreGraphic != null) {
+                    coreGraphic.setText("◎");
+                    coreGraphic.setTextSize(76);
+                    coreGraphic.setShadowLayer(dp(18), 0, 0, CYAN);
                 }
 
                 if (thinkingView != null) {
