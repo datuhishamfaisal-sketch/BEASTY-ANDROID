@@ -93,6 +93,18 @@ public class MainActivity extends Activity {
 
         createInterface();
 
+        // Show the last persisted wake-word checkpoint after a previous
+        // process death, including native JNI crashes that Java cannot catch.
+        try {
+            String lastWakeStage = getSharedPreferences("beasty_diagnostics", MODE_PRIVATE)
+                    .getString("wake_last_stage", "");
+            if (lastWakeStage != null && !lastWakeStage.isEmpty()) {
+                Toast.makeText(this, "BEASTY wake diagnostic: " + lastWakeStage,
+                        Toast.LENGTH_LONG).show();
+            }
+        } catch (Exception ignored) {
+        }
+
         // Optional voice components must never prevent the chat screen from opening.
         try {
             setupTextToSpeech();
