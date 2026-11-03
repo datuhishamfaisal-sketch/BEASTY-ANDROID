@@ -73,9 +73,13 @@ public class PersonalMemory {
 
     public synchronized String getContext() {
         JSONArray facts = getFacts();
-        if (facts.length() == 0) return "";
-        StringBuilder out = new StringBuilder("\n\nPERSISTENT USER MEMORY (locally stored facts; use only when relevant):");
-        for (int i = 0; i < facts.length(); i++) out.append("\n- ").append(facts.optString(i));
+        StringBuilder out = new StringBuilder();
+        if (facts.length() > 0) {
+            out.append("\n\nPERSISTENT USER MEMORY (locally stored facts; use only when relevant):");
+            for (int i = 0; i < facts.length(); i++) out.append("\n- ").append(facts.optString(i));
+        }
+        // The project roadmap is product context, not a personal memory fact.
+        out.append(BeastyProjectPlan.getContext());
         return out.toString();
     }
 
