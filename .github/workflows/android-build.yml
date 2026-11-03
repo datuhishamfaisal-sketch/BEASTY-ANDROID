@@ -60,13 +60,14 @@ jobs:
           cp "$MODEL_DIR"/tokens.txt "$ASSET_DIR"/
           cp "$MODEL_DIR"/bpe.model "$ASSET_DIR"/
           python3 -m pip install --quiet sherpa-onnx sentencepiece pypinyin
-          printf 'HEY BEASTY :2.0 #0.25 @HEY BEASTY\n' > keywords_raw.txt
+          printf 'HEY JARVIS\n' > keywords_raw.txt
           python3 sherpa-onnx/scripts/text2token.py \
             --text keywords_raw.txt \
             --tokens "$MODEL_DIR/tokens.txt" \
             --tokens-type bpe \
             --bpe-model "$MODEL_DIR/bpe.model" \
             --output "$ASSET_DIR/keywords.txt"
+          sed -i 's/$/ :2.0 #0.25 @HEY JARVIS/' "$ASSET_DIR/keywords.txt"
           echo "Generated official Sherpa keyword file:"
           cat "$ASSET_DIR/keywords.txt"
 
