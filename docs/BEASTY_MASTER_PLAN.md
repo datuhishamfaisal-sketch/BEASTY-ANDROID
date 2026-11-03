@@ -81,9 +81,10 @@ All modules are part of the intended product; build them progressively and conne
 - Explain hosting/domain choices and deployment steps.
 - Publishing, purchasing domains/hosting, or making a website public requires explicit user approval.
 
-### App Creator
-- Help plan, generate, revise, and package app projects.
-- Show code/build status and provide installable artifacts when successfully built.
+### BEASTY AI Creator (App Creator)
+- Accept Android app creation requests by voice or text.
+- Plan the app, generate and revise source code, diagnose errors, run builds, and prepare installable APK artifacts when the build succeeds.
+- Show project files, build status, errors, and test results clearly.
 - Installing, publishing, or distributing externally requires user approval.
 
 ### Video Creator
@@ -102,17 +103,21 @@ All modules are part of the intended product; build them progressively and conne
 - Use simple natural-language interaction first, with optional structured controls for complex workflows.
 - Make permissions, data use, memory, and background listening transparent and user-controlled.
 
-## 9. Delivery roadmap
-1. Stabilize the existing Android foundation: chat, Gemini/Groq fallback, Smart/Fast/Deep modes, speech input/output, and wake-word service.
-2. Complete Automatic Memory: broader fact detection, review/edit/delete, durable project context, and tests.
-3. Add memory export/restore and safe migration across app/device changes.
-4. Build a unified dashboard and module navigation with clear implementation status.
-5. Implement Personal Assistant productivity features and task history.
-6. Build Business Hub foundations and shared data models.
-7. Implement Business Hunter, Supplier Hunter, Tender Hunter, Market Research, and Trend Hunter.
-8. Implement Auto Business Planner, Lead Manager/CRM, and AI Negotiator.
-9. Expand Web Creator, App Creator, and Video Creator with preview/build/export workflows.
-10. Add reliable autonomous task orchestration, approval gates, audit history, security hardening, and performance/battery optimization.
+## 9. Delivery roadmap — revised priority (2026-11-03)
+The user's current instruction is to prioritize major, usable creation and business capabilities before polishing smaller features such as Advanced Memory. Do not spend the next development phase on memory enhancements unless required to unblock a priority module.
+
+1. Preserve and stabilize the existing Android foundation: Gemini/Groq chat and fallback, Smart/Fast/Deep modes, speech input/output, and wake-word service. Do not regress working features.
+2. Build **BEASTY Web Creator** into a usable workflow: voice/text request, website generation, editable code, live preview, iterative revisions, and deployment preparation. Require approval before public deployment or paid hosting/domain actions.
+3. Build **BEASTY AI Creator (App Creator)** into a usable workflow: app planning, source-code generation/editing, debugging, build execution, test/build status, and APK artifact delivery when a build succeeds. Require approval before external publishing/distribution.
+4. Build **Business Hunter** into a usable research workflow: discover opportunities, products and demand, identify target customers/leads, assess competition, estimate costs/margins/risks, and produce sourced reports.
+5. Build **Supplier Hunter**: discover manufacturers and wholesalers, compare MOQ/prices/shipping, capture contact channels, and label verification evidence clearly.
+6. Build **Tender Hunter**: discover government/private tenders and quotations, filter by location/category/licence/grade/deadline, and track eligibility and required documents.
+7. Connect these capabilities through shared research, saved projects, business records, and a simple dashboard with clear status labels.
+8. Add Market Research/Trend Hunter, Auto Business Planner, Lead Manager/CRM, and AI Negotiator to complete the Business Hub.
+9. Return to smaller improvements: Advanced Memory review/edit, backup/restore, Personal Assistant productivity, and other refinements.
+10. Expand Video Creator and the wider autonomous execution engine, then harden approvals, audit history, security, and performance.
+
+Priority rule: deliver and test working end-to-end capability for Web Creator, AI Creator, and Business Hunter first. A documented plan, menu item, or generated mockup does not count as an implemented module.
 
 ## 10. Current implementation notes
 At the time this plan was added, the Android app has working chat with Gemini/Groq fallback, selectable Smart/Fast/Deep modes, manual speech input, text-to-speech, an openWakeWord-based background voice service, continuous voice conversation, and cue-based local Automatic Memory. The user has confirmed the wake-word/voice flow works in foreground, on the home screen, in other apps, and while locked. The user has confirmed a basic memory fact can be saved and recalled.
