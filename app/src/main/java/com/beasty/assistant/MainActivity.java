@@ -47,7 +47,8 @@ public class MainActivity extends Activity {
     private Button sendButton;
     private Button micButton;
     private Button voiceButton;
-    private Button wakeButton;\n    private Button thinkingButton;
+    private Button wakeButton;
+    private Button thinkingButton;
     private boolean wakeWordEnabled = false;
     private boolean wakeTriggered = false;
     private boolean restartWakeAfterSpeech = false;
