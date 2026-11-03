@@ -281,11 +281,11 @@ public class MainActivity extends Activity {
         root.setPadding(dp(14), dp(12), dp(14), dp(12));
         root.setBackgroundColor(BG);
 
-        // Minimal BEASTY HUD header with a compact text command field at top-right.
+        // BEASTY branding on the left; compact live conversation and command box on the top-right.
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(4), dp(5), dp(4), dp(10));
+        header.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        header.setPadding(dp(4), dp(5), dp(4), dp(8));
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
@@ -295,21 +295,45 @@ public class MainActivity extends Activity {
         brand.addView(subtitle);
         header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
 
+        LinearLayout commandColumn = new LinearLayout(this);
+        commandColumn.setOrientation(LinearLayout.VERTICAL);
+        commandColumn.setPadding(dp(4), 0, 0, 0);
+
         inputMessage = new EditText(this);
         inputMessage.setHint("Ask BEASTY...");
         inputMessage.setHintTextColor(Color.rgb(130, 160, 175));
         inputMessage.setTextColor(WHITE);
-        inputMessage.setTextSize(11);
+        inputMessage.setTextSize(10);
         inputMessage.setSingleLine(true);
         inputMessage.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
         inputMessage.setInputType(InputType.TYPE_CLASS_TEXT
                 | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        inputMessage.setPadding(dp(10), dp(5), dp(10), dp(5));
-        inputMessage.setBackground(shape(Color.rgb(15, 28, 43), CYAN, 18));
-        LinearLayout.LayoutParams commandParams =
-                new LinearLayout.LayoutParams(dp(142), dp(38));
-        commandParams.setMargins(dp(6), 0, 0, 0);
-        header.addView(inputMessage, commandParams);
+        inputMessage.setPadding(dp(9), dp(4), dp(9), dp(4));
+        inputMessage.setBackground(shape(Color.rgb(15, 28, 43), CYAN, 14));
+        commandColumn.addView(inputMessage, new LinearLayout.LayoutParams(dp(164), dp(34)));
+
+        LinearLayout miniConversation = new LinearLayout(this);
+        miniConversation.setOrientation(LinearLayout.VERTICAL);
+        miniConversation.setPadding(dp(5), dp(3), dp(5), dp(3));
+        miniConversation.setBackground(shape(Color.rgb(9, 20, 34),
+                Color.rgb(25, 90, 105), 12));
+        TextView chatHeader = makeText("LIVE CONVERSATION", 7,
+                Color.rgb(105, 190, 200), true);
+        miniConversation.addView(chatHeader);
+
+        scrollView = new ScrollView(this);
+        scrollView.setFillViewport(false);
+        scrollView.setVerticalScrollBarEnabled(false);
+        chatLayout = new LinearLayout(this);
+        chatLayout.setOrientation(LinearLayout.VERTICAL);
+        chatLayout.setPadding(dp(2), dp(2), dp(2), dp(2));
+        scrollView.addView(chatLayout);
+        miniConversation.addView(scrollView, new LinearLayout.LayoutParams(-1, dp(66)));
+        LinearLayout.LayoutParams miniParams =
+                new LinearLayout.LayoutParams(dp(164), dp(88));
+        miniParams.setMargins(0, dp(4), 0, 0);
+        commandColumn.addView(miniConversation, miniParams);
+        header.addView(commandColumn);
         root.addView(header);
 
         statusText = makeText("● SYSTEM ONLINE", 10, CYAN, true);
@@ -365,66 +389,7 @@ public class MainActivity extends Activity {
         orbitInnerAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
         orbitInnerAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
 
-        // Conversation remains the main workspace.
-        LinearLayout chatPanel = new LinearLayout(this);
-        chatPanel.setOrientation(LinearLayout.VERTICAL);
-        chatPanel.setPadding(dp(8), dp(8), dp(8), dp(8));
-        chatPanel.setBackground(shape(Color.rgb(9, 20, 34), Color.rgb(25, 90, 105), 20));
-
-        TextView chatHeader = makeText("LIVE CONVERSATION", 9,
-                Color.rgb(105, 190, 200), true);
-        chatHeader.setPadding(dp(7), dp(5), dp(7), dp(8));
-        chatPanel.addView(chatHeader);
-
-        scrollView = new ScrollView(this);
-        scrollView.setFillViewport(true);
-        scrollView.setVerticalScrollBarEnabled(false);
-        chatLayout = new LinearLayout(this);
-        chatLayout.setOrientation(LinearLayout.VERTICAL);
-        chatLayout.setPadding(dp(4), dp(5), dp(4), dp(5));
-        scrollView.addView(chatLayout);
-        chatPanel.addView(scrollView, new LinearLayout.LayoutParams(-1, 0, 1));
-        root.addView(chatPanel, new LinearLayout.LayoutParams(-1, 0, 1));
-
-        // Only two visible dashboard controls.
-        LinearLayout controls = new LinearLayout(this);
-        controls.setOrientation(LinearLayout.HORIZONTAL);
-        controls.setGravity(Gravity.CENTER);
-        controls.setPadding(0, dp(10), 0, dp(2));
-
-        wakeButton = createButton("WAKE WORD: OFF", Color.rgb(18, 48, 62));
-        thinkingButton = createButton("THINKING: SMART", Color.rgb(18, 48, 62));
-        LinearLayout.LayoutParams controlParams =
-                new LinearLayout.LayoutParams(0, dp(46), 1);
-        controlParams.setMargins(dp(4), 0, dp(4), 0);
-        controls.addView(wakeButton, controlParams);
-        controls.addView(thinkingButton, controlParams);
-        root.addView(controls);
-
-        // Hidden compatibility controls: voice and send are handled by wake word
-        // and the keyboard action, so they are not shown on the dashboard.
-        micButton = createButton("MIC", CYAN);
-        voiceEnabled = getSharedPreferences("beasty_voice", MODE_PRIVATE)
-                .getBoolean("voice_enabled", true);
-        voiceButton = createButton("VOICE", Color.rgb(55, 90, 130));
-        sendButton = createButton("SEND", CYAN);
-        sendButton.setVisibility(View.GONE);
-
-        wakeButton.setOnClickListener(v -> toggleWakeWord());
-        thinkingButton.setOnClickListener(v -> cycleThinkingMode());
-
-        inputMessage.setOnEditorActionListener((view, actionId, event) -> {
-            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND
-                    || (event != null
-                    && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER
-                    && event.getAction() == android.view.KeyEvent.ACTION_DOWN)) {
-                sendMessage();
-                return true;
-            }
-            return false;
-        });
-
-        setContentView(root);
+        // Live conversation is docked in the compact top-right panel.\n\n        setContentView(root);
     }
 
     private void cycleThinkingMode() {
@@ -533,7 +498,7 @@ public class MainActivity extends Activity {
 
         TextView bubble = makeText(
                 sender + "\n\n" + message,
-                11,
+                9,
                 WHITE,
                 false
         );
