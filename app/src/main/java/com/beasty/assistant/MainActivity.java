@@ -795,7 +795,7 @@ public class MainActivity extends Activity {
                         + "Be helpful, accurate and friendly. "
                         + "Answer using the user's language. "
                         + instruction
-                        + " Write in plain natural text only. Never use emojis, emoticons, decorative symbols, bullet symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only."
+                        + (instruction.contains("WEBSITE CREATOR TASK") ? " Return only valid JSON with the requested website fields." : " Write in plain natural text only. Never use emojis, emoticons, decorative symbols, bullet symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only.")
         );
 
         systemParts.put(systemText);
@@ -870,7 +870,7 @@ public class MainActivity extends Activity {
                         + "Be helpful, accurate and friendly. "
                         + "Answer using the user's language. "
                         + instruction
-                        + " Write in plain natural text only. Never use emojis, emoticons, decorative symbols, bullet symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only."
+                        + (instruction.contains("WEBSITE CREATOR TASK") ? " Return only valid JSON with the requested website fields." : " Write in plain natural text only. Never use emojis, emoticons, decorative symbols, bullet symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only.")
         );
 
         messages.put(system);
