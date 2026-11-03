@@ -380,16 +380,63 @@ class WakeWordService : Service() {
         val instruction = "Gunakan Smart Mode. Seimbangkan kelajuan, kecerdasan dan jawapan yang lengkap. Jawab dalam bahasa pengguna." +
             BusinessHubRouter.buildInstruction(this, latestRequest) +
             PersonalMemory(this).getContext()
+        var openAiError = ""
         var geminiError = ""
         var groqError = ""
+        try {
+            return callOpenAI(instruction)
+        } catch (t: Throwable) { openAiError = t.message ?: "OpenAI error" }
         try {
             return callGemini(instruction)
         } catch (t: Throwable) { geminiError = t.message ?: "Gemini error" }
         try {
             return callGroq(instruction)
         } catch (t: Throwable) { groqError = t.message ?: "Groq error" }
-        Log.e(TAG, "AI providers failed. Gemini: $geminiError. Groq: $groqError")
+        Log.e(TAG, "AI providers failed. OpenAI: $openAiError. Gemini: $geminiError. Groq: $groqError")
         return "Maaf. BEASTY tidak dapat menyambung kepada AI sekarang."
+    }
+
+
+    private fun callOpenAI(instruction: String): String {
+        val key = BuildConfig.OPENAI_API_KEY
+        if (key.isBlank()) throw IllegalStateException("OpenAI API key missing. Add OPENAI_API_KEY to GitHub Actions secrets.")
+        val body = JSONObject()
+            .put("model", "gpt-6-luna")
+            .put("instructions",
+                "You are BEASTY, powered by OpenAI. Be helpful, accurate and friendly. Answer using the user's language. $instruction " +
+                    "Use clear natural language and useful formatting.")
+        val input = JSONArray()
+        synchronized(conversationHistory) {
+            for (i in 0 until conversationHistory.length()) {
+                val item = conversationHistory.getJSONObject(i)
+                val role = if (item.optString("role") == "assistant") "assistant" else "user"
+                input.put(JSONObject().put("role", role).put("content", item.optString("text")))
+            }
+        }
+        body.put("input", input)
+        if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) {
+            body.put("tools", JSONArray().put(JSONObject().put("type", "web_search")))
+        }
+        val response = JSONObject(makeRequest("https://api.openai.com/v1/responses", body, key))
+        var outputText = response.optString("output_text", "")
+        if (outputText.isBlank()) {
+            val output = response.optJSONArray("output")
+            val collected = StringBuilder()
+            if (output != null) {
+                for (i in 0 until output.length()) {
+                    val content = output.optJSONObject(i)?.optJSONArray("content") ?: continue
+                    for (j in 0 until content.length()) {
+                        val part = content.optJSONObject(j) ?: continue
+                        val type = part.optString("type", "")
+                        if (type == "output_text" || type == "text") collected.append(part.optString("text", ""))
+                    }
+                }
+            }
+            outputText = collected.toString()
+        }
+        return outputText.trim().also {
+            if (it.isEmpty()) throw IllegalStateException("OpenAI returned empty response")
+        }
     }
 
     private fun callGemini(instruction: String): String {
