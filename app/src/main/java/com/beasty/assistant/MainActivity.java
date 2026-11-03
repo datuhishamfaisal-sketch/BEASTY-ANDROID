@@ -389,18 +389,23 @@ public class MainActivity extends Activity {
         orbitInnerAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
         orbitInnerAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
 
-        // Restore the two dashboard controls.
+        // Keep Wake Word and Thinking together, centered at the bottom.
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.HORIZONTAL);
         controls.setGravity(Gravity.CENTER);
-        controls.setPadding(0, dp(10), 0, dp(2));
+        controls.setPadding(0, dp(8), 0, dp(8));
         wakeButton = createButton("WAKE WORD: OFF", Color.rgb(18, 48, 62));
         thinkingButton = createButton("THINKING: SMART", Color.rgb(18, 48, 62));
-        LinearLayout.LayoutParams controlParams = new LinearLayout.LayoutParams(0, dp(46), 1);
-        controlParams.setMargins(dp(4), 0, dp(4), 0);
+        LinearLayout.LayoutParams controlParams =
+                new LinearLayout.LayoutParams(dp(142), dp(46));
+        controlParams.setMargins(dp(5), 0, dp(5), 0);
         controls.addView(wakeButton, controlParams);
         controls.addView(thinkingButton, controlParams);
-        root.addView(controls);
+        LinearLayout.LayoutParams controlsParams =
+                new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT, dp(62));
+        controlsParams.gravity = Gravity.CENTER_HORIZONTAL;
+        root.addView(controls, controlsParams);
         micButton = createButton("MIC", CYAN);
         voiceEnabled = getSharedPreferences("beasty_voice", MODE_PRIVATE)
                 .getBoolean("voice_enabled", true);
