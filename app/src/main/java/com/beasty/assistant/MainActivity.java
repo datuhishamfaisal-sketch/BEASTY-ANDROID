@@ -718,6 +718,13 @@ public class MainActivity extends Activity {
             }
 
             final String finalAnswer = answer;
+            WebCreator.WebsiteProject generatedWebsite = websiteRequest
+                    ? new WebCreator(MainActivity.this).parseAiProject(finalAnswer) : null;
+            final boolean websiteSaved = generatedWebsite != null
+                    && new WebCreator(MainActivity.this).saveProject(generatedWebsite);
+            final String userFacingAnswer = websiteSaved
+                    ? "Website " + generatedWebsite.name + " berjaya dijana dan disimpan dalam BEASTY. Tekan PREVIEW WEBSITE untuk melihat hasilnya. Boss boleh minta BEASTY ubah warna, susun atur atau kandungan bila-bila masa."
+                    : finalAnswer;
 
             runOnUiThread(() -> {
 
@@ -734,20 +741,20 @@ public class MainActivity extends Activity {
                     thinkingView = null;
                 }
 
-                addMessage("BEASTY", finalAnswer, false);
+                addMessage("BEASTY", userFacingAnswer, false);
 
                 if (!finalAnswer.contains("BEASTY CONNECTION ERROR")) {
 
                     try {
                         JSONObject aiMessage = new JSONObject();
                         aiMessage.put("role", "assistant");
-                        aiMessage.put("text", finalAnswer);
+                        aiMessage.put("text", userFacingAnswer);
                         history.add(aiMessage);
 
                     } catch (Exception ignored) {
                     }
 
-                    speak(finalAnswer);
+                    speak(userFacingAnswer);
                     if (!voiceEnabled || textToSpeech == null
                             || finalAnswer.contains("BEASTY CONNECTION ERROR")) {
                         scheduleContinuousListening();
