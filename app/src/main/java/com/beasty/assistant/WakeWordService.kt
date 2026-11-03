@@ -95,6 +95,10 @@ class WakeWordService : Service() {
             if (!foregroundReady) throw IllegalStateException("Foreground microphone service not active")
             when (intent?.action) {
                 ACTION_STOP -> {
+                    conversationActive = false
+                    requestBusy = false
+                    releaseSpeechRecognizer()
+                    try { textToSpeech?.stop() } catch (_: Throwable) {}
                     stopDetector()
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf(startId)
@@ -263,7 +267,11 @@ class WakeWordService : Service() {
                 if (status == TextToSpeech.SUCCESS) {
                     val engine = textToSpeech
                     try {
-                        engine?.setLanguage(Locale("ms", "MY"))
+                        val languageResult = engine?.setLanguage(Locale("ms", "MY"))
+                        if (languageResult == TextToSpeech.LANG_MISSING_DATA ||
+                            languageResult == TextToSpeech.LANG_NOT_SUPPORTED) {
+                            engine?.setLanguage(Locale.US)
+                        }
                         engine?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
                             override fun onStart(utteranceId: String?) {}
                             override fun onDone(utteranceId: String?) {
@@ -401,7 +409,7 @@ class WakeWordService : Service() {
             }
             val code = connection.responseCode
             val stream: InputStream? = if (code in 200..299) connection.inputStream else connection.errorStream
-            val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use(BufferedReader::readText) ?: ""
+            val response = stream?.bufferedReader(StandardCharsets.UTF_8)?.use { it.readText() } ?: ""
             if (code !in 200..299) {
                 val detail = try { JSONObject(response).getJSONObject("error").optString("message", response) }
                     catch (_: Throwable) { response }
