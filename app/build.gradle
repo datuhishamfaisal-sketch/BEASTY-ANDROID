@@ -18,6 +18,7 @@ android {
         versionName "1.2-openwakeword"
         buildConfigField "String", "GEMINI_API_KEY", "\"${geminiKey}\""
         buildConfigField "String", "GROQ_API_KEY", "\"${groqKey}\""
+        buildConfigField "String", "OPENAI_API_KEY", "\"${openAiKey}\""
     }
     buildFeatures { buildConfig true }
     compileOptions {
