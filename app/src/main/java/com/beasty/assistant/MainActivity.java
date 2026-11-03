@@ -914,9 +914,9 @@ public class MainActivity extends Activity {
                         if (web == null) continue;
                         String title = web.optString("title", "Web source");
                         String uri = web.optString("uri", "");
-                        if (!uri.isEmpty()) sources.append('\\n').append(title).append(": ").append(uri);
+                        if (!uri.isEmpty()) sources.append('\n').append(title).append(": ").append(uri);
                     }
-                    if (sources.length() > 7) result.append("\\n\\n").append(sources);
+                    if (sources.length() > 7) result.append("\n\n").append(sources);
                 }
             } catch (Exception ignored) { }
         }
