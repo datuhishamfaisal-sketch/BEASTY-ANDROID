@@ -151,7 +151,9 @@ class WakeWordService : Service() {
                     featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
                     modelConfig = getKwsModelConfig(type = 1)
                         ?: throw IllegalStateException("English wake-word model config unavailable"),
-                    keywordsFile = "$MODEL_DIR/keywords.txt"
+                    keywordsFile = "$MODEL_DIR/keywords.txt",
+                    keywordsScore = 3.0f,
+                    keywordsThreshold = 0.1f
                 )
                 val detector = KeywordSpotter(application.assets, config)
                 checkpoint("native_model_initialized")
