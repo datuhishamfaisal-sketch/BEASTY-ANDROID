@@ -45,15 +45,18 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           test -n "$GEMINI_API_KEY" || { echo "GEMINI_API_KEY is missing or empty"; exit 1; }
           test -n "$GROQ_API_KEY" || { echo "GROQ_API_KEY is missing or empty"; exit 1; }
-          echo "Both AI API secrets are present (values hidden)."
+          if [ -n "$OPENAI_API_KEY" ]; then echo "OpenAI API secret is configured."; else echo "OpenAI API secret not set; BEASTY will use Gemini then Groq."; fi
+          echo "Required Gemini and Groq API secrets are present (values hidden)."
 
       - name: Build BEASTY debug APK
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           ./gradle-8.11.1/bin/gradle :app:assembleDebug --no-daemon
 
