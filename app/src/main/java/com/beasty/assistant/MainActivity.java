@@ -836,12 +836,30 @@ public class MainActivity extends Activity {
         systemInstruction.put("parts", systemParts);
 
         body.put("systemInstruction", systemInstruction);
-        body.put("contents", contents);
+
+        // The app's shared chat history stores messages as {role, text}.
+        // Gemini REST requires each content item to use {role, parts:[{text}]}.
+        JSONArray geminiContents = new JSONArray();
+        for (int index = 0; index < contents.length(); index++) {
+            JSONObject historyItem = contents.getJSONObject(index);
+            String role = historyItem.optString("role", "user");
+            String messageText = historyItem.optString("text", "");
+            if (messageText.trim().isEmpty()) continue;
+
+            JSONObject geminiItem = new JSONObject();
+            geminiItem.put("role", role.equals("assistant") ? "model" : "user");
+            JSONArray parts = new JSONArray();
+            JSONObject part = new JSONObject();
+            part.put("text", messageText);
+            parts.put(part);
+            geminiItem.put("parts", parts);
+            geminiContents.put(geminiItem);
+        }
+        body.put("contents", geminiContents);
 
         JSONObject config = new JSONObject();
-        config.put("temperature", 0.7);
+        // Gemini 3.8 Flash no longer needs legacy sampling parameters.
         config.put("maxOutputTokens", 4096);
-
         body.put("generationConfig", config);
 
         String response = makeRequest(endpoint, body, null);
