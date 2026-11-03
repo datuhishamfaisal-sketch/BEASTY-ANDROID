@@ -19,6 +19,7 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.RecognitionListener;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
@@ -50,12 +51,14 @@ public class MainActivity extends Activity {
     private boolean wakeWordEnabled = false;
     private boolean wakeTriggered = false;
     private boolean restartWakeAfterSpeech = false;
+    private volatile boolean continuousConversation = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final BroadcastReceiver wakeReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             if (WakeWordService.ACTION_WAKE_DETECTED.equals(intent.getAction())) {
                 wakeTriggered = true;
+                continuousConversation = true;
                 if (statusText != null) statusText.setText("● HEY JARVIS DETECTED");
                 mainHandler.postDelayed(() -> startListening(), 900);
             }
@@ -639,6 +642,10 @@ public class MainActivity extends Activity {
                     }
 
                     speak(finalAnswer);
+                    if (!voiceEnabled || textToSpeech == null
+                            || finalAnswer.contains("BEASTY CONNECTION ERROR")) {
+                        scheduleContinuousListening();
+                    }
                 }
             });
 
@@ -904,6 +911,19 @@ public class MainActivity extends Activity {
 
             if (status == TextToSpeech.SUCCESS) {
 
+                textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override public void onStart(String utteranceId) { }
+                    @Override public void onDone(String utteranceId) {
+                        if ("BEASTY_SPEECH".equals(utteranceId)) scheduleContinuousListening();
+                    }
+                    @Override public void onError(String utteranceId) {
+                        if ("BEASTY_SPEECH".equals(utteranceId)) scheduleContinuousListening();
+                    }
+                    @Override public void onStop(String utteranceId, boolean interrupted) {
+                        if ("BEASTY_SPEECH".equals(utteranceId)) scheduleContinuousListening();
+                    }
+                });
+
                 int result = textToSpeech.setLanguage(
                         new Locale("ms", "MY")
                 );
@@ -975,7 +995,8 @@ public class MainActivity extends Activity {
                             Toast.LENGTH_SHORT).show();
                 });
                 wakeTriggered = false;
-                resumeWakeWordAfterSpeech();
+                if (continuousConversation) scheduleContinuousListening();
+                else resumeWakeWordAfterSpeech();
             }
 
             @Override
@@ -989,7 +1010,7 @@ public class MainActivity extends Activity {
                     runOnUiThread(() -> {
                         inputMessage.setText(matches.get(0));
                         inputMessage.setSelection(inputMessage.getText().length());
-                        if (wakeTriggered) {
+                        if (wakeTriggered || continuousConversation) {
                             wakeTriggered = false;
                             sendMessage();
                         }
@@ -999,7 +1020,11 @@ public class MainActivity extends Activity {
                 }
 
                 runOnUiThread(() -> micButton.setText("🎙 MIC"));
-                resumeWakeWordAfterSpeech();
+                if (continuousConversation) {
+                    if (matches == null || matches.isEmpty()) scheduleContinuousListening();
+                } else {
+                    resumeWakeWordAfterSpeech();
+                }
             }
 
             @Override
@@ -1014,6 +1039,9 @@ public class MainActivity extends Activity {
 
     private void toggleWakeWord() {
         if (wakeWordEnabled) {
+            continuousConversation = false;
+            wakeTriggered = false;
+            if (speechRecognizer != null) speechRecognizer.cancel();
             Intent stop = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_STOP);
             startService(stop);
             wakeWordEnabled = false;
@@ -1055,6 +1083,13 @@ public class MainActivity extends Activity {
             android.util.Log.e("BEASTY_WAKE_DIAG", "Activity could not start wake service", e);
             Toast.makeText(this, "Wake word error: " + errorText, Toast.LENGTH_LONG).show();
         }
+    }
+
+    private void scheduleContinuousListening() {
+        if (!continuousConversation || isThinking || isFinishing()) return;
+        mainHandler.postDelayed(() -> {
+            if (continuousConversation && !isThinking && !isFinishing()) startListening();
+        }, 900);
     }
 
     private void startListening() {
