@@ -60,7 +60,7 @@ jobs:
           model = spm.SentencePieceProcessor(model_file="sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01/bpe.model")
           pieces = model.encode("HEY BEASTY", out_type=str)
           with open("app/src/main/assets/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01/keywords.txt", "w", encoding="utf-8") as f:
-              f.write(" ".join(pieces) + " @HEY BEASTY\\n")
+              f.write(" ".join(pieces) + " @HEY BEASTY\n")
           print("Generated Hey BEASTY keyword tokens:", pieces)
           PY
 
