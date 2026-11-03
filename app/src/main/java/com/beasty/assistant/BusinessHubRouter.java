@@ -56,7 +56,7 @@ public final class BusinessHubRouter {
             route.append("AI Negotiator; ");
         if (has(q, "peluang bisnes", "peluang perniagaan", "idea bisnes", "idea perniagaan", "cari bisnes", "bisnes apa", "business opportunity"))
             route.append("Business Hunter; ");
-        if (route.length() == 0 && has(q, "bisnes", "business", "jual", "jualan", "produk", "pasaran", "cari"))
+        if (route.length() == 0 && has(q, "bisnes", "business", "jual", "jualan", "produk", "pasaran"))
             route.append("Business Hub intent detection; ");
         return route.toString().trim();
     }
