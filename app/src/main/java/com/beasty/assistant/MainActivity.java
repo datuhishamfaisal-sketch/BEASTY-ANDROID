@@ -495,6 +495,20 @@ public class MainActivity extends Activity {
 
         addMessage("YOU", message, true);
 
+        String commandText = message.toLowerCase(Locale.ROOT).trim()
+                .replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ");
+        boolean openWebsitePreview = commandText.contains("buka web preview")
+                || commandText.contains("open web preview")
+                || commandText.contains("buka preview website")
+                || commandText.contains("open website preview")
+                || commandText.contains("lihat website")
+                || commandText.contains("tunjuk website")
+                || commandText.contains("show website");
+        if (openWebsitePreview) {
+            openLatestWebsitePreview();
+            return;
+        }
+
         PersonalMemory personalMemory = new PersonalMemory(this);
         String memoryCommandReply = personalMemory.handleCommand(message);
         if (memoryCommandReply != null) {
@@ -631,7 +645,7 @@ public class MainActivity extends Activity {
             final boolean websiteSaved = generatedWebsite != null
                     && new WebCreator(MainActivity.this).saveProject(generatedWebsite);
             final String userFacingAnswer = websiteSaved
-                    ? "Website " + generatedWebsite.name + " berjaya dijana dan disimpan dalam BEASTY. Tekan PREVIEW WEBSITE untuk melihat hasilnya. Boss boleh minta BEASTY ubah warna, susun atur atau kandungan bila-bila masa."
+                    ? "Website " + generatedWebsite.name + " berjaya dijana dan disimpan dalam BEASTY. Untuk melihatnya, cakap sahaja: Buka Web Preview. Boss juga boleh minta BEASTY ubah warna, susun atur atau kandungan bila-bila masa."
                     : finalAnswer;
 
             runOnUiThread(() -> {
