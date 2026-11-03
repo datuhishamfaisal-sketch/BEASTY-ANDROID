@@ -75,6 +75,14 @@ All modules are part of the intended product; build them progressively and conne
 - Draft messages autonomously, but never send customer/supplier messages without user approval.
 
 ## 6. Creator studio
+### BEASTY Visual Search & AI Image Creator
+- Search across available image providers based on the user's natural-language request; paginate provider results rather than imposing a small fixed result count.
+- Prefer properly licensed/reusable assets and preserve creator, source, and license information.
+- Match images to website sections automatically, check that selected image URLs load, and replace broken or irrelevant images.
+- Generate original images with a supported AI image model when search results are unsuitable or the user explicitly requests new artwork.
+- Treat paid image-generation API usage as a billable external service; disclose costs and require user approval before enabling automatic paid generation.
+- Keep generated assets available to website preview and deployment packaging, with clear provenance that they are AI-generated.
+
 ### BEASTY Web Creator
 - Accept website requests by voice or text.
 - Generate website structure, content, and code; preview, revise, and prepare deployment.
