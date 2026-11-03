@@ -710,8 +710,9 @@ public class MainActivity extends Activity {
             String answer = "";
             String geminiError = "";
             String groqError = "";
+            ImageAssetHunter imageHunter = new ImageAssetHunter();
             String imageAssets = websiteRequest
-                    ? new ImageAssetHunter().searchForWebsite(message) : "";
+                    ? imageHunter.searchForWebsite(message) : "";
             String enrichedInstruction = instruction;
             if (!imageAssets.isEmpty()) {
                 enrichedInstruction += " LICENSE-REVIEWED IMAGE CANDIDATES FOUND ONLINE (Wikimedia Commons). "
@@ -750,6 +751,9 @@ public class MainActivity extends Activity {
             final String finalAnswer = answer;
             WebCreator.WebsiteProject generatedWebsite = websiteRequest
                     ? new WebCreator(MainActivity.this).parseAiProject(finalAnswer) : null;
+            if (generatedWebsite != null && !imageAssets.isEmpty()) {
+                generatedWebsite.html = imageHunter.ensureImagesInHtml(generatedWebsite.html, imageAssets);
+            }
             final boolean websiteSaved = generatedWebsite != null
                     && new WebCreator(MainActivity.this).saveProject(generatedWebsite);
             final String userFacingAnswer = websiteSaved
