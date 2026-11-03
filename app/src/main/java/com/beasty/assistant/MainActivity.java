@@ -59,7 +59,19 @@ public class MainActivity extends Activity {
         @Override public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             String text = intent.getStringExtra(WakeWordService.EXTRA_TEXT);
-            if (WakeWordService.ACTION_WAKE_DETECTED.equals(action)) {
+            if (WakeWordService.ACTION_WEB_CREATOR_REQUEST.equals(action)) {
+                if ("OPEN".equals(text)) {
+                    awaitingWebsiteGeneration = true;
+                    getSharedPreferences("beasty_web_creator", MODE_PRIVATE).edit()
+                            .putBoolean("awaiting_voice_request", true).apply();
+                    addMessage("BEASTY", "Web Creator sudah sedia. Terangkan website yang Boss mahu bina melalui suara atau teks.", false);
+                    if (statusText != null) statusText.setText("● WEB CREATOR READY");
+                } else if (text != null && !text.trim().isEmpty()) {
+                    inputMessage.setText("BEASTY WEB CREATOR: Bina website berdasarkan keperluan ini: " + text
+                            + ". Cari dan padankan sendiri gambar berlesen serta pilihan visual yang sesuai. Jangan minta saya buka Google atau pilih bahan secara manual.");
+                    sendMessage();
+                }
+            } else if (WakeWordService.ACTION_WAKE_DETECTED.equals(action)) {
                 wakeTriggered = false;
                 continuousConversation = false;
                 if (statusText != null) statusText.setText("● HEY JARVIS DETECTED");
@@ -493,10 +505,34 @@ public class MainActivity extends Activity {
 
         inputMessage.setText("");
 
-        addMessage("YOU", message, true);
-
         String commandText = message.toLowerCase(Locale.ROOT).trim()
                 .replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ");
+        boolean openCreator = commandText.contains("bawa aku ke web creator")
+                || commandText.contains("buka web creator")
+                || commandText.contains("open web creator")
+                || commandText.contains("masuk web creator")
+                || commandText.equals("web creator");
+        if (openCreator) {
+            awaitingWebsiteGeneration = true;
+            getSharedPreferences("beasty_web_creator", MODE_PRIVATE).edit()
+                    .putBoolean("awaiting_voice_request", true).apply();
+            addMessage("YOU", message, true);
+            addMessage("BEASTY", "Web Creator sudah sedia. Terangkan website yang Boss mahu bina melalui suara atau teks.", false);
+            if (statusText != null) statusText.setText("● WEB CREATOR READY");
+            return;
+        }
+        boolean awaitingCreator = awaitingWebsiteGeneration
+                || getSharedPreferences("beasty_web_creator", MODE_PRIVATE)
+                    .getBoolean("awaiting_voice_request", false);
+        if (awaitingCreator) {
+            awaitingWebsiteGeneration = false;
+            getSharedPreferences("beasty_web_creator", MODE_PRIVATE).edit()
+                    .putBoolean("awaiting_voice_request", false).apply();
+            message = "BEASTY WEB CREATOR: Bina website berdasarkan keperluan ini: " + message
+                    + ". Cari dan padankan sendiri gambar berlesen serta pilihan visual yang sesuai. Jangan minta saya buka Google atau pilih bahan secara manual.";
+            commandText = message.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ");
+        }
+        addMessage("YOU", message, true);
         boolean openWebsitePreview = commandText.contains("buka web preview")
                 || commandText.contains("open web preview")
                 || commandText.contains("buka preview website")
@@ -682,6 +718,9 @@ public class MainActivity extends Activity {
                     }
 
                     speak(userFacingAnswer);
+                    if (websiteSaved) {
+                        mainHandler.postDelayed(() -> openLatestWebsitePreview(), 450);
+                    }
                     if (!voiceEnabled || textToSpeech == null
                             || finalAnswer.contains("BEASTY CONNECTION ERROR")) {
                         scheduleContinuousListening();
