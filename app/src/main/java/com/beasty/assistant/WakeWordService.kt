@@ -143,6 +143,7 @@ class WakeWordService : Service() {
             var localSpotter: KeywordSpotter? = null
             var localStream: com.k2fsa.sherpa.onnx.OnlineStream? = null
             var localRecorder: AudioRecord? = null
+            var wakeDetected = false
             try {
                 checkpoint("detector_thread_started")
                 checkpoint("before_native_model_init")
@@ -193,8 +194,8 @@ class WakeWordService : Service() {
                             if (keyword.isNotBlank()) {
                                 detector.reset(detectorStream)
                                 running = false
-                                showNotification("Hey BEASTY detected — tap to talk")
-                                sendBroadcast(Intent(ACTION_WAKE_DETECTED).setPackage(packageName))
+                                wakeDetected = true
+                                showNotification("Hey BEASTY detected — listening for command")
                                 break
                             }
                         }
@@ -219,6 +220,12 @@ class WakeWordService : Service() {
                 if (stream === localStream) stream = null
                 if (spotter === localSpotter) spotter = null
                 checkpoint("detector_stopped")
+                // Notify the activity only after AudioRecord and native stream
+                // have been released. SpeechRecognizer must not compete with
+                // the wake-word recorder for the microphone.
+                if (wakeDetected) {
+                    sendBroadcast(Intent(ACTION_WAKE_DETECTED).setPackage(packageName))
+                }
             }
         }.apply {
             name = "BEASTY-WakeWord"
