@@ -45,6 +45,7 @@ class WakeWordService : Service() {
         const val ACTION_VOICE_REPLY = "com.beasty.assistant.VOICE_REPLY"
         const val ACTION_VOICE_STATUS = "com.beasty.assistant.VOICE_STATUS"
         const val ACTION_WEB_CREATOR_REQUEST = "com.beasty.assistant.WEB_CREATOR_REQUEST"
+        const val ACTION_WEB_PREVIEW_REQUEST = "com.beasty.assistant.WEB_PREVIEW_REQUEST"
         const val EXTRA_TEXT = "text"
         const val EXTRA_WAKE_DETECTED = "wake_detected"
         private const val CHANNEL_ID = "beasty_wake_word"
@@ -218,6 +219,17 @@ class WakeWordService : Service() {
                         .putExtra(EXTRA_TEXT, spoken))
                     val normalizedCommand = spoken.lowercase(java.util.Locale.ROOT)
                         .replace(Regex("[^a-z0-9\\s]"), " ").replace(Regex("\\s+"), " ").trim()
+                    val openWebPreview = normalizedCommand.contains("buka web preview")
+                        || normalizedCommand.contains("open web preview")
+                        || normalizedCommand.contains("buka preview website")
+                        || normalizedCommand.contains("open website preview")
+                        || normalizedCommand.contains("lihat website")
+                        || normalizedCommand.contains("tunjuk website")
+                        || normalizedCommand.contains("show website")
+                    if (openWebPreview) {
+                        sendBroadcast(Intent(ACTION_WEB_PREVIEW_REQUEST).setPackage(packageName))
+                        return
+                    }
                     val openWebCreator = normalizedCommand.contains("bawa aku ke web creator")
                         || normalizedCommand.contains("buka web creator")
                         || normalizedCommand.contains("open web creator")
