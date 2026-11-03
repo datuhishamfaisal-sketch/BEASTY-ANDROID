@@ -392,6 +392,24 @@ public class MainActivity extends Activity {
         root.addView(wakeButton, wakeParams);
         wakeButton.setOnClickListener(v -> toggleWakeWord());
 
+        // PERSONAL MEMORY BACKUP / RESTORE
+        LinearLayout memoryRow = new LinearLayout(this);
+        memoryRow.setOrientation(LinearLayout.HORIZONTAL);
+        memoryRow.setGravity(Gravity.CENTER);
+        memoryRow.setPadding(0, dp(2), 0, dp(4));
+
+        Button backupMemoryButton = createButton("BACKUP MEMORY", Color.rgb(45, 90, 115));
+        Button restoreMemoryButton = createButton("RESTORE MEMORY", Color.rgb(55, 90, 130));
+        LinearLayout.LayoutParams memoryButtonParams =
+                new LinearLayout.LayoutParams(0, dp(42), 1);
+        memoryButtonParams.setMargins(dp(3), 0, dp(3), 0);
+        memoryRow.addView(backupMemoryButton, memoryButtonParams);
+        memoryRow.addView(restoreMemoryButton, memoryButtonParams);
+        root.addView(memoryRow);
+
+        backupMemoryButton.setOnClickListener(v -> chooseMemoryBackupDestination());
+        restoreMemoryButton.setOnClickListener(v -> chooseMemoryBackupFile());
+
         // MESSAGE INPUT
 
         LinearLayout inputRow = new LinearLayout(this);
@@ -1193,6 +1211,88 @@ public class MainActivity extends Activity {
         if (requestCode == 101 && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             startWakeWordService();
+        }
+    }
+
+    private static final int REQUEST_MEMORY_BACKUP_EXPORT = 7201;
+    private static final int REQUEST_MEMORY_BACKUP_IMPORT = 7202;
+
+    private void chooseMemoryBackupDestination() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE, "BEASTY-memory-backup.json");
+        try {
+            startActivityForResult(intent, REQUEST_MEMORY_BACKUP_EXPORT);
+        } catch (Exception e) {
+            Toast.makeText(this, "Tidak dapat membuka pilihan lokasi fail.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void chooseMemoryBackupFile() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        try {
+            startActivityForResult(intent, REQUEST_MEMORY_BACKUP_IMPORT);
+        } catch (Exception e) {
+            Toast.makeText(this, "Tidak dapat membuka pemilih fail.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+
+        final android.net.Uri uri = data.getData();
+        if (requestCode == REQUEST_MEMORY_BACKUP_EXPORT) {
+            try {
+                PersonalMemory memory = new PersonalMemory(this);
+                JSONObject backup = memory.exportBackup();
+                try (OutputStream output = getContentResolver().openOutputStream(uri)) {
+                    if (output == null) throw new Exception("Tidak dapat menulis fail.");
+                    output.write(backup.toString(2).getBytes(StandardCharsets.UTF_8));
+                    output.flush();
+                }
+                Toast.makeText(this,
+                        "Backup berjaya. " + backup.getJSONArray("facts").length()
+                                + " memory disimpan.",
+                        Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Backup gagal: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        } else if (requestCode == REQUEST_MEMORY_BACKUP_IMPORT) {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Pulihkan memory BEASTY?")
+                    .setMessage("Memory daripada fail akan digabungkan dengan memory sedia ada. Memory berganda akan dielakkan. Teruskan?")
+                    .setNegativeButton("BATAL", null)
+                    .setPositiveButton("PULIHKAN", (dialog, which) -> importMemoryBackup(uri))
+                    .show();
+        }
+    }
+
+    private void importMemoryBackup(android.net.Uri uri) {
+        try {
+            String jsonText;
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                if (input == null) throw new Exception("Fail tidak dapat dibaca.");
+                java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                byte[] chunk = new byte[4096];
+                int count;
+                while ((count = input.read(chunk)) != -1) {
+                    if (buffer.size() + count > 1024 * 1024) {
+                        throw new Exception("Fail backup terlalu besar.");
+                    }
+                    buffer.write(chunk, 0, count);
+                }
+                jsonText = buffer.toString("UTF-8");
+            }
+            int restored = new PersonalMemory(this).restoreBackup(jsonText);
+            Toast.makeText(this, "Restore berjaya. " + restored
+                    + " memory baharu dipulihkan.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Restore gagal: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
