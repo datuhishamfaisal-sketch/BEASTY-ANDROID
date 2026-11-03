@@ -215,6 +215,15 @@ class WakeWordService : Service() {
                     }
                     sendBroadcast(Intent(ACTION_VOICE_TRANSCRIPT).setPackage(packageName)
                         .putExtra(EXTRA_TEXT, spoken))
+                    val memory = PersonalMemory(this@WakeWordService)
+                    val memoryCommandReply = memory.handleCommand(spoken)
+                    if (memoryCommandReply != null) {
+                        sendBroadcast(Intent(ACTION_VOICE_REPLY).setPackage(packageName)
+                            .putExtra(EXTRA_TEXT, memoryCommandReply))
+                        speakAnswer(memoryCommandReply)
+                        return
+                    }
+                    memory.rememberFromUserText(spoken)
                     addHistory("user", spoken)
                     requestBusy = true
                     updateNotification("BEASTY is thinking")
@@ -330,7 +339,8 @@ class WakeWordService : Service() {
     }
 
     private fun generateAnswer(): String? {
-        val instruction = "Gunakan Smart Mode. Seimbangkan kelajuan, kecerdasan dan jawapan yang lengkap. Jawab dalam bahasa pengguna."
+        val instruction = "Gunakan Smart Mode. Seimbangkan kelajuan, kecerdasan dan jawapan yang lengkap. Jawab dalam bahasa pengguna." +
+            PersonalMemory(this).getContext()
         var geminiError = ""
         var groqError = ""
         try {
