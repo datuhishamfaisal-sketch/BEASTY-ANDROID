@@ -97,11 +97,16 @@ public class MainActivity extends Activity {
         // Show the last persisted wake-word checkpoint after a previous
         // process death, including native JNI crashes that Java cannot catch.
         try {
-            String lastWakeStage = getSharedPreferences("beasty_diagnostics", MODE_PRIVATE)
-                    .getString("wake_last_stage", "");
+            android.content.SharedPreferences diagnostics =
+                    getSharedPreferences("beasty_diagnostics", MODE_PRIVATE);
+            String lastWakeStage = diagnostics.getString("wake_last_stage", "");
+            String lastKeyword = diagnostics.getString("wake_last_keyword", "");
+            String lastTokens = diagnostics.getString("wake_last_tokens", "");
             if (lastWakeStage != null && !lastWakeStage.isEmpty()) {
-                Toast.makeText(this, "BEASTY wake diagnostic: " + lastWakeStage,
-                        Toast.LENGTH_LONG).show();
+                String detail = "BEASTY: " + lastWakeStage
+                        + "\\nLast keyword: " + lastKeyword
+                        + "\\nLast decoded tokens: " + lastTokens;
+                Toast.makeText(this, detail, Toast.LENGTH_LONG).show();
             }
         } catch (Exception ignored) {
         }
