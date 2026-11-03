@@ -73,14 +73,14 @@ class WakeWordService : Service() {
                     showNotification("Microphone paused — voice command mode")
                 }
                 ACTION_RESUME -> {
-                    showNotification("Wake word standby — say Hey BEASTY")
+                    showNotification("Wake word standby — say Hey Jarvis")
                     if (!running && detectorThread?.isAlive != true) startDetector()
                 }
                 ACTION_START, null -> {
                     // Android 14–16 require the microphone foreground service to
                     // be promoted while the app is visible and microphone access is granted.
                     checkpoint("before_foreground_notification")
-                    showNotification("Wake word standby — say Hey BEASTY")
+                    showNotification("Wake word standby — say Hey Jarvis")
                     checkpoint("foreground_notification_started")
                     if (!running) startDetector()
                 }
@@ -243,7 +243,7 @@ class WakeWordService : Service() {
                                 detector.reset(detectorStream)
                                 running = false
                                 wakeDetected = true
-                                showNotification("Hey BEASTY detected — listening for command")
+                                showNotification("Hey Jarvis detected — listening for command")
                                 break
                             }
                         }
