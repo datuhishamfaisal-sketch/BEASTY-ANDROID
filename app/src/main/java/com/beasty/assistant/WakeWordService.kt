@@ -99,6 +99,9 @@ class WakeWordService : Service() {
         } catch (error: Throwable) {
             running = false
             checkpoint("service_start_exception_${error.javaClass.simpleName}")
+            getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+                .putString("wake_last_error", "${error.javaClass.name}: ${error.message}")
+                .apply()
             android.util.Log.e("BEASTY_WAKE", "Unable to start microphone foreground service", error)
             try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Throwable) {}
             stopSelf(startId)
@@ -275,6 +278,9 @@ class WakeWordService : Service() {
             } catch (e: Throwable) {
                 running = false
                 checkpoint("detector_exception_${e.javaClass.simpleName}")
+                getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+                    .putString("wake_last_error", "${e.javaClass.name}: ${e.message}")
+                    .apply()
                 android.util.Log.e("BEASTY_WAKE", "Wake-word detector crashed", e)
                 try {
                     showNotification("Wake word error: ${e.javaClass.simpleName}")
