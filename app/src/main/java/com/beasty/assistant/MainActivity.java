@@ -103,10 +103,10 @@ public class MainActivity extends Activity {
             String lastKeyword = diagnostics.getString("wake_last_keyword", "");
             String lastTokens = diagnostics.getString("wake_last_tokens", "");
             if (lastWakeStage != null && !lastWakeStage.isEmpty()) {
-                String detail = "BEASTY: " + lastWakeStage
-                        + "\\nLast keyword: " + lastKeyword
-                        + "\\nLast decoded tokens: " + lastTokens;
-                Toast.makeText(this, detail, Toast.LENGTH_LONG).show();
+                String detail = "Stage: " + lastWakeStage
+                        + "\nLast keyword: " + lastKeyword
+                        + "\nLast decoded tokens: " + lastTokens;
+                addMessage("WAKE DIAGNOSTIC", detail, false);
             }
         } catch (Exception ignored) {
         }
