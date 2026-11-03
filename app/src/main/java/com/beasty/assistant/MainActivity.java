@@ -292,6 +292,11 @@ public class MainActivity extends Activity {
         modeSpinner.setAdapter(modeAdapter);
         modeSpinner.setVisibility(View.GONE);
 
+        TextView coreGraphic = makeText("◎", 76, CYAN, true);
+        coreGraphic.setGravity(Gravity.CENTER);
+        coreGraphic.setShadowLayer(dp(18), 0, 0, CYAN);
+        root.addView(coreGraphic, new LinearLayout.LayoutParams(-1, dp(176)));
+
         // Conversation remains the main workspace.
         LinearLayout chatPanel = new LinearLayout(this);
         chatPanel.setOrientation(LinearLayout.VERTICAL);
@@ -430,12 +435,13 @@ public class MainActivity extends Activity {
 
         TextView bubble = makeText(
                 sender + "\n\n" + message,
-                14,
+                11,
                 WHITE,
                 false
         );
 
-        bubble.setPadding(dp(14), dp(12), dp(14), dp(12));
+        bubble.setPadding(dp(9), dp(7), dp(9), dp(7));
+        bubble.setLineSpacing(dp(1), 1.0f);
         bubble.setBackground(shape(
                 user
                         ? Color.rgb(22, 80, 115)
