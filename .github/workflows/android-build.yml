@@ -59,12 +59,14 @@ jobs:
           cp "$MODEL_DIR"/joiner-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
           cp "$MODEL_DIR"/tokens.txt "$ASSET_DIR"/
           cp "$MODEL_DIR"/bpe.model "$ASSET_DIR"/
+          python3 -m pip install --quiet sherpa-onnx
           printf 'HEY BEASTY\n' > keywords_raw.txt
           python3 sherpa-onnx/scripts/text2token.py \
+            --text keywords_raw.txt \
             --tokens "$MODEL_DIR/tokens.txt" \
             --tokens-type bpe \
             --bpe-model "$MODEL_DIR/bpe.model" \
-            keywords_raw.txt "$ASSET_DIR/keywords.txt"
+            --output "$ASSET_DIR/keywords.txt"
           echo "Generated official Sherpa keyword file:"
           cat "$ASSET_DIR/keywords.txt"
 
