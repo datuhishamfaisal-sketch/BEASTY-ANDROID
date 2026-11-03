@@ -267,9 +267,10 @@ public class MainActivity extends Activity {
                 .optString("text", null);
 
         } catch (Exception e) {
-            return null;
-        }
-    }
+    android.util.Log.e("BEASTY_GEMINI", "Gemini error", e);
+    return "GEMINI_ERROR: " + e.getMessage();
+}
+    
 
     private String askGroq(String prompt) {
         if (BuildConfig.GROQ_API_KEY.isEmpty()) return null;
