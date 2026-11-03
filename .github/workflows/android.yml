@@ -7,18 +7,15 @@ on:
     branches:
       - main
 
-permissions:
-  contents: read
-
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout BEASTY
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -26,18 +23,16 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.11.1'
 
-      - name: Build BEASTY APK
+      - name: Build APK
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: gradle assembleDebug
 
-      - name: Upload BEASTY APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BEASTY-APK
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          path: app/build/outputs/apk/debug/app-debug.apk
+
