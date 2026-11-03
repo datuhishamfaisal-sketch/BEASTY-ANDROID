@@ -82,7 +82,7 @@ class WakeWordService : Service() {
             .setOngoing(true)
             .addAction(android.R.drawable.ic_media_pause, "Stop", stopService)
             .build()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             startForeground(
                 NOTIFICATION_ID, notification,
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
