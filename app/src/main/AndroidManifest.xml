@@ -30,6 +30,8 @@
 
         </activity>
 
+        <activity android:name=".WebPreviewActivity" android:exported="false" />
+
         <!-- BEASTY Wake Word Service -->
         <service
             android:name=".WakeWordService"
