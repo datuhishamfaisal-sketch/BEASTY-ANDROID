@@ -42,6 +42,28 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/app/libs"
           cp sherpa_onnx/build/outputs/aar/sherpa_onnx-release.aar "$GITHUB_WORKSPACE/app/libs/sherpa-onnx-2.0.1.aar"
 
+      - name: Prepare offline Hey BEASTY keyword model
+        run: |
+          wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2
+          tar -xjf sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2
+          MODEL_DIR=sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01
+          ASSET_DIR=app/src/main/assets/$MODEL_DIR
+          mkdir -p "$ASSET_DIR"
+          cp "$MODEL_DIR"/encoder-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
+          cp "$MODEL_DIR"/decoder-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
+          cp "$MODEL_DIR"/joiner-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
+          cp "$MODEL_DIR"/tokens.txt "$ASSET_DIR"/
+          cp "$MODEL_DIR"/bpe.model "$ASSET_DIR"/
+          python3 -m pip install --quiet sentencepiece
+          python3 - <<'PY'
+          import sentencepiece as spm
+          model = spm.SentencePieceProcessor(model_file="sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01/bpe.model")
+          pieces = model.encode("HEY BEASTY", out_type=str)
+          with open("app/src/main/assets/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01/keywords.txt", "w", encoding="utf-8") as f:
+              f.write(" ".join(pieces) + " @HEY BEASTY\\n")
+          print("Generated Hey BEASTY keyword tokens:", pieces)
+          PY
+
       - name: Set up Gradle for BEASTY
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.11.1-bin.zip
