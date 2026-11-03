@@ -61,7 +61,15 @@ class WakeWordService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
             checkpoint("service_onStartCommand")
-            when (intent?.action) {
+            // A microphone foreground service must never be resurrected by Android
+            // in the background. Only an explicit user tap from the visible
+            // activity may start it.
+            if (intent == null) {
+                checkpoint("service_restart_blocked_null_intent")
+                stopSelf(startId)
+                return START_NOT_STICKY
+            }
+            when (intent.action) {
                 ACTION_STOP -> {
                     stopDetector()
                     stopForeground(STOP_FOREGROUND_REMOVE)
@@ -85,7 +93,9 @@ class WakeWordService : Service() {
                     if (!running) startDetector()
                 }
             }
-            return START_STICKY
+            // Do not let Android automatically restart a microphone service
+            // after the app has gone to the background.
+            return START_NOT_STICKY
         } catch (error: Throwable) {
             running = false
             checkpoint("service_start_exception_${error.javaClass.simpleName}")
