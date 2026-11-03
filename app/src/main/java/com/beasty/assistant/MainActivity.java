@@ -666,13 +666,30 @@ public class MainActivity extends Activity {
                 scrollView.fullScroll(View.FOCUS_DOWN)
         );
 
-        final boolean websiteRequest = message.toLowerCase(Locale.ROOT).contains("beasty web creator")
-                || message.toLowerCase(Locale.ROOT).contains("buat website")
-                || message.toLowerCase(Locale.ROOT).contains("bina website")
-                || message.toLowerCase(Locale.ROOT).contains("create a website");
+        String lowerRequest = message.toLowerCase(Locale.ROOT);
+        final boolean websiteRequest = lowerRequest.contains("beasty web creator")
+                || lowerRequest.contains("buat website")
+                || lowerRequest.contains("bina website")
+                || lowerRequest.contains("create a website")
+                || lowerRequest.contains("ubah website")
+                || lowerRequest.contains("edit website")
+                || lowerRequest.contains("kemas kini website")
+                || lowerRequest.contains("update website")
+                || lowerRequest.contains("tambah pada website")
+                || lowerRequest.contains("modify website");
         awaitingWebsiteGeneration = websiteRequest;
+        WebCreator.WebsiteProject previousWebsite = websiteRequest
+                ? new WebCreator(this).getLatestProject() : null;
+        String previousWebsiteContext = previousWebsite == null ? ""
+                : " EXISTING WEBSITE TO REVISE: name=" + previousWebsite.name
+                + " description=" + previousWebsite.description
+                + " html=" + previousWebsite.html
+                + " css=" + previousWebsite.css
+                + " javascript=" + previousWebsite.javascript
+                + " Apply the user's requested changes to this existing project and return the complete updated code. ";
         final String creatorInstruction = websiteRequest
-                ? " WEBSITE CREATOR TASK: Generate a complete responsive website from the user's request. Return ONLY one valid JSON object, no markdown fences and no explanation, with string fields name, description, html, css, javascript. Put complete HTML in html, styling in css, and client-side behavior in javascript. Use mobile-first responsive design and accessible labels. Use realistic placeholder content where details are missing. Never invent real company contact details. Ensure html is substantial and ready for preview. Do not claim deployment. "
+                ? " WEBSITE CREATOR TASK: Generate or revise a complete responsive website from the user's request. Return ONLY one valid JSON object, no markdown fences and no explanation, with string fields name, description, html, css, javascript. Put complete HTML in html, styling in css, and client-side behavior in javascript. Use mobile-first responsive design and accessible labels. Use realistic placeholder content where details are missing. Never invent real company contact details. Ensure html is substantial and ready for preview. Do not claim deployment. "
+                    + previousWebsiteContext
                 : "";
         final String instruction = getModeInstruction()
                 + creatorInstruction
