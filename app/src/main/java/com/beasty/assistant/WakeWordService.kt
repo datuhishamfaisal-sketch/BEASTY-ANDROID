@@ -411,7 +411,7 @@ class WakeWordService : Service() {
             }
         }
         body.put("contents", contents)
-        body.put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 4096))
+        body.put("generationConfig", JSONObject().put("maxOutputTokens", 4096))
         if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) {
             val searchTools = JSONArray().put(JSONObject().put("google_search", JSONObject()))
             body.put("tools", searchTools)
@@ -419,9 +419,25 @@ class WakeWordService : Service() {
         val response = makeRequest(endpoint, body, null)
         val candidates = JSONObject(response).getJSONArray("candidates")
         if (candidates.length() == 0) throw IllegalStateException("Gemini returned no candidates")
-        val responseParts = candidates.getJSONObject(0).getJSONObject("content").getJSONArray("parts")
+        val candidate = candidates.getJSONObject(0)
+        val responseParts = candidate.getJSONObject("content").getJSONArray("parts")
         val output = StringBuilder()
         for (i in 0 until responseParts.length()) output.append(responseParts.getJSONObject(i).optString("text", ""))
+        if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) {
+            try {
+                val chunks = candidate.optJSONObject("groundingMetadata")?.optJSONArray("groundingChunks")
+                if (chunks != null && chunks.length() > 0) {
+                    val sources = StringBuilder("\\n\\nSources:")
+                    for (i in 0 until chunks.length()) {
+                        val web = chunks.optJSONObject(i)?.optJSONObject("web") ?: continue
+                        val uri = web.optString("uri", "")
+                        if (uri.isNotEmpty()) sources.append("\\n")
+                            .append(web.optString("title", "Web source")).append(": ").append(uri)
+                    }
+                    if (sources.length > 10) output.append(sources)
+                }
+            } catch (_: Throwable) { }
+        }
         return output.toString().trim().also { if (it.isEmpty()) throw IllegalStateException("Gemini returned empty response") }
     }
 
@@ -430,7 +446,9 @@ class WakeWordService : Service() {
         if (key.isBlank()) throw IllegalStateException("Groq API key missing")
         val body = JSONObject().put("model", groqModel).put("temperature", 0.7).put("max_tokens", 4096)
         val messages = JSONArray().put(JSONObject().put("role", "system").put("content",
-            "You are BEASTY, an intelligent AI assistant. Be helpful, accurate and friendly. Answer using the user's language. $instruction Write in plain natural text only. Never use emojis, emoticons, decorative symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only."))
+            "You are BEASTY, an intelligent AI assistant. Be helpful, accurate and friendly. Answer using the user's language. $instruction " +
+                (if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) "IMPORTANT: Groq is a fallback without live web search in this request. Do not present current search results, sources, suppliers, prices or tender status as verified. Clearly tell the user live research could not be completed because the web-search provider was unavailable. " else "") +
+                "Write in plain natural text only. Never use emojis, emoticons, decorative symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only."))
         synchronized(conversationHistory) {
             for (i in 0 until conversationHistory.length()) {
                 val item = conversationHistory.getJSONObject(i)
