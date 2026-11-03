@@ -60,7 +60,7 @@ jobs:
           cp "$MODEL_DIR"/tokens.txt "$ASSET_DIR"/
           cp "$MODEL_DIR"/bpe.model "$ASSET_DIR"/
           python3 -m pip install --quiet sherpa-onnx sentencepiece pypinyin
-          printf 'HEY BEASTY\n' > keywords_raw.txt
+          printf 'HEY BEASTY :2.0 #0.25 @HEY BEASTY\n' > keywords_raw.txt
           python3 sherpa-onnx/scripts/text2token.py \
             --text keywords_raw.txt \
             --tokens "$MODEL_DIR/tokens.txt" \
