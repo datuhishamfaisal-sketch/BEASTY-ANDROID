@@ -75,6 +75,9 @@ jobs:
           unzip -q gradle-8.11.1-bin.zip
 
       - name: Build BEASTY debug APK
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           ./gradle-8.11.1/bin/gradle :app:assembleDebug --no-daemon
 
