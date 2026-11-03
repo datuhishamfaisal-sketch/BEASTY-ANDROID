@@ -389,7 +389,37 @@ public class MainActivity extends Activity {
         orbitInnerAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
         orbitInnerAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
 
-        // Live conversation is docked in the compact top-right panel.\n\n        setContentView(root);
+        // Restore the two dashboard controls.
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER);
+        controls.setPadding(0, dp(10), 0, dp(2));
+        wakeButton = createButton("WAKE WORD: OFF", Color.rgb(18, 48, 62));
+        thinkingButton = createButton("THINKING: SMART", Color.rgb(18, 48, 62));
+        LinearLayout.LayoutParams controlParams = new LinearLayout.LayoutParams(0, dp(46), 1);
+        controlParams.setMargins(dp(4), 0, dp(4), 0);
+        controls.addView(wakeButton, controlParams);
+        controls.addView(thinkingButton, controlParams);
+        root.addView(controls);
+        micButton = createButton("MIC", CYAN);
+        voiceEnabled = getSharedPreferences("beasty_voice", MODE_PRIVATE)
+                .getBoolean("voice_enabled", true);
+        voiceButton = createButton("VOICE", Color.rgb(55, 90, 130));
+        sendButton = createButton("SEND", CYAN);
+        sendButton.setVisibility(View.GONE);
+        wakeButton.setOnClickListener(v -> toggleWakeWord());
+        thinkingButton.setOnClickListener(v -> cycleThinkingMode());
+        inputMessage.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND
+                    || (event != null
+                    && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == android.view.KeyEvent.ACTION_DOWN)) {
+                sendMessage();
+                return true;
+            }
+            return false;
+        });
+        setContentView(root);
     }
 
     private void cycleThinkingMode() {
