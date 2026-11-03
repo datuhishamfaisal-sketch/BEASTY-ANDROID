@@ -5,6 +5,7 @@ plugins {
 
 def geminiKey = System.getenv("GEMINI_API_KEY") ?: ""
 def groqKey = System.getenv("GROQ_API_KEY") ?: ""
+def openAiKey = System.getenv("OPENAI_API_KEY") ?: ""
 
 android {
     namespace 'com.beasty.assistant'
