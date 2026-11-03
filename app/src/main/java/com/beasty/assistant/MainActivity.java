@@ -837,6 +837,7 @@ public class MainActivity extends Activity {
                         + "Be helpful, accurate and friendly. "
                         + "Answer using the user's language. "
                         + instruction
+                        + (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH") ? " IMPORTANT: Groq is a fallback without live web search in this request. Do not present current search results, sources, suppliers, prices or tender status as verified. Clearly tell the user live research could not be completed because the web-search provider was unavailable." : "")
                         + (instruction.contains("WEBSITE CREATOR TASK") ? " Return only valid JSON with the requested website fields." : " Write in plain natural text only. Never use emojis, emoticons, decorative symbols, bullet symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only.")
         );
 
@@ -901,6 +902,24 @@ public class MainActivity extends Activity {
             throw new Exception("Gemini returned empty response");
         }
 
+        if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) {
+            try {
+                JSONObject candidate = candidates.getJSONObject(0);
+                JSONObject grounding = candidate.optJSONObject("groundingMetadata");
+                JSONArray chunks = grounding == null ? null : grounding.optJSONArray("groundingChunks");
+                if (chunks != null && chunks.length() > 0) {
+                    StringBuilder sources = new StringBuilder("\\n\\nSources:");
+                    for (int i = 0; i < chunks.length(); i++) {
+                        JSONObject web = chunks.getJSONObject(i).optJSONObject("web");
+                        if (web == null) continue;
+                        String title = web.optString("title", "Web source");
+                        String uri = web.optString("uri", "");
+                        if (!uri.isEmpty()) sources.append("\\n").append(title).append(": ").append(uri);
+                    }
+                    if (sources.length() > 10) result.append(sources);
+                }
+            } catch (Exception ignored) { }
+        }
         return result.toString();
     }
 
