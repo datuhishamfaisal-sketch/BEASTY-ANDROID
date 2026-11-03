@@ -1,3 +1,4 @@
+
 package com.beasty.assistant;
 
 import android.Manifest;
@@ -14,14 +15,9 @@ import android.speech.RecognitionListener;
 import android.speech.tts.TextToSpeech;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.Spinner;
-import android.widget.ArrayAdapter;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.view.WindowManager;
+import android.widget.*;
+import android.text.InputType;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -46,6 +42,8 @@ public class MainActivity extends Activity {
     private Button voiceButton;
     private Spinner modeSpinner;
     private ScrollView scrollView;
+    private TextView statusText;
+    private TextView thinkingView;
 
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
@@ -58,45 +56,131 @@ public class MainActivity extends Activity {
     private static final String GEMINI_MODEL = "gemini-3.8-flash";
     private static final String GROQ_MODEL = "openai/gpt-oss-20b";
 
-    private String lastApiError = "";
+    private static final int MIC_PERMISSION = 100;
+
+    private final int BG = Color.rgb(8, 13, 27);
+    private final int PANEL = Color.rgb(19, 29, 49);
+    private final int CYAN = Color.rgb(0, 225, 210);
+    private final int WHITE = Color.WHITE;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        getWindow().setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        );
+
         createInterface();
         setupTextToSpeech();
         setupSpeechRecognition();
 
-        addMessage("BEASTY",
-                "Hai! Saya BEASTY. Saya sedia membantu. Apa yang boleh saya bantu hari ini?",
-                false);
+        addMessage(
+                "BEASTY",
+                "System online. Saya BEASTY, AI assistant anda. Apa yang boleh saya bantu hari ini?",
+                false
+        );
+    }
+
+    private int dp(float value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private GradientDrawable shape(
+            int color,
+            int strokeColor,
+            int radius
+    ) {
+        GradientDrawable drawable = new GradientDrawable();
+        drawable.setColor(color);
+        drawable.setCornerRadius(dp(radius));
+
+        if (strokeColor != Color.TRANSPARENT) {
+            drawable.setStroke(dp(1), strokeColor);
+        }
+
+        return drawable;
+    }
+
+    private TextView makeText(
+            String text,
+            int size,
+            int color,
+            boolean bold
+    ) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextSize(size);
+        view.setTextColor(color);
+
+        if (bold) {
+            view.setTypeface(null, Typeface.BOLD);
+        }
+
+        return view;
     }
 
     private void createInterface() {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(13, 17, 28));
-        root.setPadding(16, 16, 16, 12);
+        root.setPadding(dp(14), dp(10), dp(14), dp(10));
+        root.setBackgroundColor(BG);
 
-        TextView title = new TextView(this);
-        title.setText("BEASTY");
-        title.setTextSize(28);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setTextColor(Color.WHITE);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(8, 12, 8, 4);
+        // HEADER
 
-        TextView subtitle = new TextView(this);
-        subtitle.setText("YOUR AI ASSISTANT");
-        subtitle.setTextSize(11);
-        subtitle.setTextColor(Color.rgb(0, 210, 180));
-        subtitle.setGravity(Gravity.CENTER);
-        subtitle.setPadding(4, 0, 4, 14);
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(12), dp(10), dp(12), dp(10));
+        header.setBackground(shape(PANEL, CYAN, 18));
 
-        root.addView(title);
-        root.addView(subtitle);
+        LinearLayout brand = new LinearLayout(this);
+        brand.setOrientation(LinearLayout.VERTICAL);
+
+        TextView title = makeText("BEASTY", 25, WHITE, true);
+        TextView subtitle = makeText(
+                "NEXT GENERATION AI",
+                10,
+                CYAN,
+                true
+        );
+
+        brand.addView(title);
+        brand.addView(subtitle);
+
+        header.addView(
+                brand,
+                new LinearLayout.LayoutParams(0, -2, 1)
+        );
+
+        LinearLayout statusBox = new LinearLayout(this);
+        statusBox.setOrientation(LinearLayout.VERTICAL);
+        statusBox.setGravity(Gravity.CENTER);
+        statusBox.setPadding(dp(10), dp(6), dp(10), dp(6));
+        statusBox.setBackground(shape(
+                Color.rgb(10, 55, 54),
+                CYAN,
+                15
+        ));
+
+        statusText = makeText("● ONLINE", 11, CYAN, true);
+        statusBox.addView(statusText);
+
+        header.addView(statusBox);
+        root.addView(header);
+
+        // MODE SELECTOR
+
+        TextView modeLabel = makeText(
+                "AI INTELLIGENCE MODE",
+                10,
+                CYAN,
+                true
+        );
+
+        modeLabel.setPadding(dp(5), dp(12), 0, dp(5));
+        root.addView(modeLabel);
 
         modeSpinner = new Spinner(this);
 
@@ -117,85 +201,129 @@ public class MainActivity extends Activity {
         );
 
         modeSpinner.setAdapter(adapter);
+        modeSpinner.setBackground(shape(PANEL, CYAN, 12));
 
-        root.addView(modeSpinner);
+        root.addView(
+                modeSpinner,
+                new LinearLayout.LayoutParams(-1, dp(46))
+        );
+
+        // CHAT AREA
+
+        LinearLayout chatPanel = new LinearLayout(this);
+        chatPanel.setOrientation(LinearLayout.VERTICAL);
+        chatPanel.setPadding(dp(8), dp(8), dp(8), dp(8));
+        chatPanel.setBackground(shape(PANEL, Color.rgb(35, 65, 85), 18));
+
+        TextView chatHeader = makeText(
+                "◈  BEASTY CONVERSATION",
+                11,
+                CYAN,
+                true
+        );
+
+        chatHeader.setPadding(dp(5), dp(5), dp(5), dp(8));
+        chatPanel.addView(chatHeader);
 
         scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setVerticalScrollBarEnabled(false);
 
         chatLayout = new LinearLayout(this);
         chatLayout.setOrientation(LinearLayout.VERTICAL);
-        chatLayout.setPadding(4, 12, 4, 12);
+        chatLayout.setPadding(dp(3), dp(5), dp(3), dp(5));
 
         scrollView.addView(chatLayout);
 
-        LinearLayout.LayoutParams chatParams =
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        0,
-                        1
-                );
+        chatPanel.addView(
+                scrollView,
+                new LinearLayout.LayoutParams(-1, 0, 1)
+        );
 
-        chatParams.topMargin = 8;
-        chatParams.bottomMargin = 8;
+        root.addView(
+                chatPanel,
+                new LinearLayout.LayoutParams(-1, 0, 1)
+        );
 
-        root.addView(scrollView, chatParams);
+        // VOICE CONTROLS
 
         LinearLayout voiceRow = new LinearLayout(this);
         voiceRow.setOrientation(LinearLayout.HORIZONTAL);
+        voiceRow.setGravity(Gravity.CENTER);
+        voiceRow.setPadding(0, dp(9), 0, dp(5));
 
-        micButton = createButton("MIC");
-        voiceButton = createButton("VOICE ON");
+        micButton = createButton("🎙 MIC", CYAN);
+        voiceButton = createButton("VOICE ON", Color.rgb(55, 90, 130));
 
-        voiceRow.addView(
-                micButton,
-                new LinearLayout.LayoutParams(0, 48, 1)
-        );
+        LinearLayout.LayoutParams voiceParams =
+                new LinearLayout.LayoutParams(0, dp(48), 1);
 
-        voiceRow.addView(
-                voiceButton,
-                new LinearLayout.LayoutParams(0, 48, 1)
-        );
+        voiceParams.setMargins(dp(3), 0, dp(3), 0);
+
+        voiceRow.addView(micButton, voiceParams);
+        voiceRow.addView(voiceButton, voiceParams);
 
         root.addView(voiceRow);
 
+        // MESSAGE INPUT
+
         LinearLayout inputRow = new LinearLayout(this);
         inputRow.setOrientation(LinearLayout.HORIZONTAL);
-        inputRow.setPadding(0, 8, 0, 0);
+        inputRow.setGravity(Gravity.CENTER_VERTICAL);
+        inputRow.setPadding(0, dp(4), 0, dp(3));
 
         inputMessage = new EditText(this);
-        inputMessage.setSingleLine(false);
-        inputMessage.setHint("Taip mesej...");
-        inputMessage.setTextColor(Color.WHITE);
-        inputMessage.setHintTextColor(Color.GRAY);
+        inputMessage.setHint("Message BEASTY...");
+        inputMessage.setHintTextColor(Color.rgb(140, 155, 175));
+        inputMessage.setTextColor(WHITE);
         inputMessage.setTextSize(15);
-        inputMessage.setPadding(14, 8, 14, 8);
+        inputMessage.setPadding(dp(15), dp(10), dp(10), dp(10));
+        inputMessage.setMinHeight(dp(52));
+        inputMessage.setMaxLines(4);
+        inputMessage.setInputType(
+                InputType.TYPE_CLASS_TEXT |
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE |
+                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        );
+        inputMessage.setBackground(shape(
+                Color.rgb(28, 39, 59),
+                CYAN,
+                16
+        ));
 
-        GradientDrawable inputBackground = new GradientDrawable();
-        inputBackground.setColor(Color.rgb(31, 39, 56));
-        inputBackground.setCornerRadius(18);
-        inputMessage.setBackground(inputBackground);
+        LinearLayout.LayoutParams editParams =
+                new LinearLayout.LayoutParams(0, dp(55), 1);
 
-        sendButton = createButton("SEND");
+        editParams.setMargins(0, 0, dp(7), 0);
 
-        LinearLayout.LayoutParams inputParams =
-                new LinearLayout.LayoutParams(0, 55, 1);
+        inputRow.addView(inputMessage, editParams);
 
-        inputParams.rightMargin = 8;
-
-        inputRow.addView(inputMessage, inputParams);
+        sendButton = createButton("SEND ➤", CYAN);
 
         inputRow.addView(
                 sendButton,
-                new LinearLayout.LayoutParams(90, 55)
+                new LinearLayout.LayoutParams(dp(90), dp(55))
         );
 
         root.addView(inputRow);
+
+        TextView footer = makeText(
+                "BEASTY AI  •  GEMINI + GROQ",
+                9,
+                Color.rgb(105, 130, 155),
+                false
+        );
+
+        footer.setGravity(Gravity.CENTER);
+        footer.setPadding(0, dp(5), 0, 0);
+        root.addView(footer);
 
         setContentView(root);
 
         sendButton.setOnClickListener(v -> sendMessage());
 
         voiceButton.setOnClickListener(v -> {
+
             voiceEnabled = !voiceEnabled;
 
             voiceButton.setText(
@@ -210,53 +338,60 @@ public class MainActivity extends Activity {
         micButton.setOnClickListener(v -> startListening());
     }
 
-    private Button createButton(String text) {
+    private Button createButton(String text, int color) {
 
         Button button = new Button(this);
 
         button.setText(text);
-        button.setTextColor(Color.WHITE);
+        button.setTextColor(WHITE);
         button.setTextSize(12);
         button.setTypeface(null, Typeface.BOLD);
-
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(Color.rgb(0, 150, 140));
-        background.setCornerRadius(18);
-
-        button.setBackground(background);
+        button.setAllCaps(false);
+        button.setPadding(dp(4), 0, dp(4), 0);
+        button.setBackground(shape(
+                color,
+                color == CYAN ? Color.WHITE : Color.TRANSPARENT,
+                16
+        ));
 
         return button;
     }
 
-    private void addMessage(String sender, String message, boolean user) {
+    private void addMessage(
+            String sender,
+            String message,
+            boolean user
+    ) {
 
-        TextView bubble = new TextView(this);
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
 
-        bubble.setText(sender + "\n\n" + message);
-        bubble.setTextSize(15);
-        bubble.setTextColor(Color.WHITE);
-        bubble.setPadding(16, 12, 16, 12);
+        TextView bubble = makeText(
+                sender + "\n\n" + message,
+                14,
+                WHITE,
+                false
+        );
 
-        GradientDrawable background = new GradientDrawable();
-
-        if (user) {
-            background.setColor(Color.rgb(30, 91, 130));
-        } else {
-            background.setColor(Color.rgb(38, 48, 65));
-        }
-
-        background.setCornerRadius(18);
-        bubble.setBackground(background);
+        bubble.setPadding(dp(14), dp(12), dp(14), dp(12));
+        bubble.setBackground(shape(
+                user
+                        ? Color.rgb(22, 80, 115)
+                        : Color.rgb(34, 48, 70),
+                user ? Color.rgb(40, 160, 205) : CYAN,
+                16
+        ));
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
+                        -1,
+                        -2
                 );
 
-        params.setMargins(0, 6, 0, 6);
+        params.setMargins(0, dp(5), 0, dp(5));
 
-        chatLayout.addView(bubble, params);
+        container.addView(bubble, params);
+        chatLayout.addView(container);
 
         scrollView.post(() ->
                 scrollView.fullScroll(View.FOCUS_DOWN)
@@ -275,20 +410,16 @@ public class MainActivity extends Activity {
             return "Berikan analisis mendalam, terperinci, tersusun dan lengkap. Terangkan langkah demi langkah.";
         }
 
-        return "Gunakan Smart Mode. Seimbangkan kelajuan, kecerdasan dan jawapan yang lengkap. Jawab dalam bahasa yang digunakan oleh pengguna.";
+        return "Gunakan Smart Mode. Seimbangkan kelajuan, kecerdasan dan jawapan yang lengkap. Jawab dalam bahasa pengguna.";
     }
 
     private void sendMessage() {
 
-        if (isThinking) {
-            return;
-        }
+        if (isThinking) return;
 
         String message = inputMessage.getText().toString().trim();
 
-        if (message.isEmpty()) {
-            return;
-        }
+        if (message.isEmpty()) return;
 
         inputMessage.setText("");
 
@@ -298,48 +429,74 @@ public class MainActivity extends Activity {
             JSONObject userMessage = new JSONObject();
             userMessage.put("role", "user");
             userMessage.put("text", message);
-
             history.add(userMessage);
 
         } catch (Exception e) {
-            addMessage("BEASTY", "Ralat menyimpan mesej.", false);
+            addMessage("BEASTY", "Message history error.", false);
             return;
         }
 
         isThinking = true;
         sendButton.setEnabled(false);
+        sendButton.setText("WAIT...");
 
-        addMessage("BEASTY", "Thinking...", false);
+        if (statusText != null) {
+            statusText.setText("● THINKING");
+        }
+
+        thinkingView = makeText(
+                "◈ BEASTY IS THINKING...",
+                13,
+                CYAN,
+                true
+        );
+
+        thinkingView.setPadding(dp(12), dp(15), dp(12), dp(15));
+        chatLayout.addView(thinkingView);
+
+        scrollView.post(() ->
+                scrollView.fullScroll(View.FOCUS_DOWN)
+        );
+
+        final String instruction = getModeInstruction();
+
+        final JSONArray historySnapshot = new JSONArray();
+
+        try {
+            for (JSONObject item : history) {
+                historySnapshot.put(new JSONObject(item.toString()));
+            }
+        } catch (Exception ignored) {
+        }
 
         new Thread(() -> {
 
             String answer = "";
+            String geminiError = "";
+            String groqError = "";
 
             try {
-                answer = callGemini();
+                answer = callGemini(historySnapshot, instruction);
 
             } catch (Exception e) {
-                lastApiError = e.getMessage();
+                geminiError = e.getMessage();
             }
 
-            if (answer == null || answer.isEmpty()) {
-
-                String geminiError = lastApiError;
+            if (answer == null || answer.trim().isEmpty()) {
 
                 try {
-                    answer = callGroq();
+                    answer = callGroq(historySnapshot, instruction);
 
                 } catch (Exception e) {
-                    lastApiError = e.getMessage();
+                    groqError = e.getMessage();
                 }
+            }
 
-                if (answer == null || answer.isEmpty()) {
-                    String groqError = lastApiError;
+            if (answer == null || answer.trim().isEmpty()) {
 
-                    answer = "BEASTY CONNECTION ERROR\n\n"
-                            + "GEMINI: " + geminiError
-                            + "\n\nGROQ: " + groqError;
-                }
+                answer = "BEASTY CONNECTION ERROR\n\n"
+                        + "GEMINI: " + geminiError
+                        + "\n\nGROQ: " + groqError;
             }
 
             final String finalAnswer = answer;
@@ -348,11 +505,15 @@ public class MainActivity extends Activity {
 
                 isThinking = false;
                 sendButton.setEnabled(true);
+                sendButton.setText("SEND ➤");
 
-                int lastIndex = chatLayout.getChildCount() - 1;
+                if (statusText != null) {
+                    statusText.setText("● ONLINE");
+                }
 
-                if (lastIndex >= 0) {
-                    chatLayout.removeViewAt(lastIndex);
+                if (thinkingView != null) {
+                    chatLayout.removeView(thinkingView);
+                    thinkingView = null;
                 }
 
                 addMessage("BEASTY", finalAnswer, false);
@@ -363,7 +524,6 @@ public class MainActivity extends Activity {
                         JSONObject aiMessage = new JSONObject();
                         aiMessage.put("role", "assistant");
                         aiMessage.put("text", finalAnswer);
-
                         history.add(aiMessage);
 
                     } catch (Exception ignored) {
@@ -376,7 +536,10 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private String callGemini() throws Exception {
+    private String callGemini(
+            JSONArray contents,
+            String instruction
+    ) throws Exception {
 
         String apiKey = BuildConfig.GEMINI_API_KEY;
 
@@ -402,55 +565,34 @@ public class MainActivity extends Activity {
                 "You are BEASTY, an intelligent AI assistant. "
                         + "Be helpful, accurate and friendly. "
                         + "Answer using the user's language. "
-                        + getModeInstruction()
+                        + instruction
         );
 
         systemParts.put(systemText);
         systemInstruction.put("parts", systemParts);
 
         body.put("systemInstruction", systemInstruction);
-
-        JSONArray contents = new JSONArray();
-
-        for (JSONObject item : history) {
-
-            JSONObject content = new JSONObject();
-
-            String role = item.getString("role");
-
-            content.put(
-                    "role",
-                    role.equals("assistant") ? "model" : "user"
-            );
-
-            JSONArray parts = new JSONArray();
-            JSONObject part = new JSONObject();
-
-            part.put("text", item.getString("text"));
-
-            parts.put(part);
-            content.put("parts", parts);
-
-            contents.put(content);
-        }
-
         body.put("contents", contents);
 
-        JSONObject generationConfig = new JSONObject();
-        generationConfig.put("temperature", 0.7);
-        generationConfig.put("maxOutputTokens", 4096);
+        JSONObject config = new JSONObject();
+        config.put("temperature", 0.7);
+        config.put("maxOutputTokens", 4096);
 
-        body.put("generationConfig", generationConfig);
+        body.put("generationConfig", config);
 
-        String response = makeRequest(endpoint, body);
+        String response = makeRequest(endpoint, body, null);
 
         JSONObject json = new JSONObject(response);
 
         JSONArray candidates = json.getJSONArray("candidates");
 
-        JSONObject candidate = candidates.getJSONObject(0);
+        if (candidates.length() == 0) {
+            throw new Exception("Gemini returned no candidates");
+        }
 
-        JSONObject content = candidate.getJSONObject("content");
+        JSONObject content = candidates
+                .getJSONObject(0)
+                .getJSONObject("content");
 
         JSONArray parts = content.getJSONArray("parts");
 
@@ -467,7 +609,10 @@ public class MainActivity extends Activity {
         return result.toString();
     }
 
-    private String callGroq() throws Exception {
+    private String callGroq(
+            JSONArray historySnapshot,
+            String instruction
+    ) throws Exception {
 
         String apiKey = BuildConfig.GROQ_API_KEY;
 
@@ -487,7 +632,6 @@ public class MainActivity extends Activity {
         JSONArray messages = new JSONArray();
 
         JSONObject system = new JSONObject();
-
         system.put("role", "system");
 
         system.put(
@@ -495,12 +639,14 @@ public class MainActivity extends Activity {
                 "You are BEASTY, an intelligent AI assistant. "
                         + "Be helpful, accurate and friendly. "
                         + "Answer using the user's language. "
-                        + getModeInstruction()
+                        + instruction
         );
 
         messages.put(system);
 
-        for (JSONObject item : history) {
+        for (int i = 0; i < historySnapshot.length(); i++) {
+
+            JSONObject item = historySnapshot.getJSONObject(i);
 
             JSONObject message = new JSONObject();
 
@@ -518,17 +664,20 @@ public class MainActivity extends Activity {
 
         body.put("messages", messages);
 
-        String response = makeGroqRequest(endpoint, body, apiKey);
+        String response = makeRequest(endpoint, body, apiKey);
 
         JSONObject json = new JSONObject(response);
 
         JSONArray choices = json.getJSONArray("choices");
 
-        JSONObject choice = choices.getJSONObject(0);
+        if (choices.length() == 0) {
+            throw new Exception("Groq returned no choices");
+        }
 
-        JSONObject message = choice.getJSONObject("message");
-
-        String result = message.optString("content", "");
+        String result = choices
+                .getJSONObject(0)
+                .getJSONObject("message")
+                .optString("content", "");
 
         if (result.trim().isEmpty()) {
             throw new Exception("Groq returned empty response");
@@ -538,60 +687,6 @@ public class MainActivity extends Activity {
     }
 
     private String makeRequest(
-            String endpoint,
-            JSONObject body
-    ) throws Exception {
-
-        HttpURLConnection connection = null;
-
-        try {
-
-            URL url = new URL(endpoint);
-
-            connection = (HttpURLConnection) url.openConnection();
-
-            connection.setRequestMethod("POST");
-            connection.setConnectTimeout(20000);
-            connection.setReadTimeout(60000);
-
-            connection.setDoOutput(true);
-
-            connection.setRequestProperty(
-                    "Content-Type",
-                    "application/json"
-            );
-
-            byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
-
-            try (OutputStream output = connection.getOutputStream()) {
-                output.write(data);
-            }
-
-            int code = connection.getResponseCode();
-
-            InputStream stream = code >= 200 && code < 300
-                    ? connection.getInputStream()
-                    : connection.getErrorStream();
-
-            String response = readStream(stream);
-
-            if (code < 200 || code >= 300) {
-                throw new Exception(
-                        "HTTP " + code + ": " + extractApiError(response)
-                );
-            }
-
-            return response;
-
-        } finally {
-
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
-    private String makeGroqRequest(
             String endpoint,
             JSONObject body,
             String apiKey
@@ -608,7 +703,6 @@ public class MainActivity extends Activity {
             connection.setRequestMethod("POST");
             connection.setConnectTimeout(20000);
             connection.setReadTimeout(60000);
-
             connection.setDoOutput(true);
 
             connection.setRequestProperty(
@@ -616,10 +710,12 @@ public class MainActivity extends Activity {
                     "application/json"
             );
 
-            connection.setRequestProperty(
-                    "Authorization",
-                    "Bearer " + apiKey
-            );
+            if (apiKey != null) {
+                connection.setRequestProperty(
+                        "Authorization",
+                        "Bearer " + apiKey
+                );
+            }
 
             byte[] data = body.toString().getBytes(StandardCharsets.UTF_8);
 
@@ -653,9 +749,7 @@ public class MainActivity extends Activity {
 
     private String readStream(InputStream stream) throws Exception {
 
-        if (stream == null) {
-            return "";
-        }
+        if (stream == null) return "";
 
         StringBuilder result = new StringBuilder();
 
@@ -681,20 +775,16 @@ public class MainActivity extends Activity {
             JSONObject json = new JSONObject(response);
 
             if (json.has("error")) {
-
-                JSONObject error = json.getJSONObject("error");
-
-                return error.optString("message", response);
+                return json.getJSONObject("error")
+                        .optString("message", response);
             }
 
         } catch (Exception ignored) {
         }
 
-        if (response == null || response.isEmpty()) {
-            return "No error details returned";
-        }
-
-        return response;
+        return response == null || response.isEmpty()
+                ? "No error details returned"
+                : response;
     }
 
     private void setupTextToSpeech() {
@@ -761,17 +851,20 @@ public class MainActivity extends Activity {
             @Override
             public void onEndOfSpeech() {
                 runOnUiThread(() ->
-                        micButton.setText("MIC")
+                        micButton.setText("🎙 MIC")
                 );
             }
 
             @Override
             public void onError(int error) {
+
                 runOnUiThread(() -> {
-                    micButton.setText("MIC");
+
+                    micButton.setText("🎙 MIC");
+
                     Toast.makeText(
                             MainActivity.this,
-                            "Voice recognition error",
+                            "Voice recognition error: " + error,
                             Toast.LENGTH_SHORT
                     ).show();
                 });
@@ -787,14 +880,18 @@ public class MainActivity extends Activity {
 
                 if (matches != null && !matches.isEmpty()) {
 
-                    inputMessage.setText(matches.get(0));
-                    inputMessage.setSelection(
-                            inputMessage.getText().length()
-                    );
+                    runOnUiThread(() -> {
+
+                        inputMessage.setText(matches.get(0));
+
+                        inputMessage.setSelection(
+                                inputMessage.getText().length()
+                        );
+                    });
                 }
 
                 runOnUiThread(() ->
-                        micButton.setText("MIC")
+                        micButton.setText("🎙 MIC")
                 );
             }
 
@@ -811,6 +908,7 @@ public class MainActivity extends Activity {
     private void startListening() {
 
         if (speechRecognizer == null) {
+
             Toast.makeText(
                     this,
                     "Speech recognition unavailable",
@@ -825,7 +923,7 @@ public class MainActivity extends Activity {
 
             requestPermissions(
                     new String[]{Manifest.permission.RECORD_AUDIO},
-                    100
+                    MIC_PERMISSION
             );
 
             return;
@@ -850,7 +948,17 @@ public class MainActivity extends Activity {
                 true
         );
 
-        speechRecognizer.startListening(intent);
+        try {
+            speechRecognizer.startListening(intent);
+
+        } catch (Exception e) {
+
+            Toast.makeText(
+                    this,
+                    "Cannot start microphone",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
     }
 
     @Override
@@ -866,7 +974,7 @@ public class MainActivity extends Activity {
                 grantResults
         );
 
-        if (requestCode == 100
+        if (requestCode == MIC_PERMISSION
                 && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
