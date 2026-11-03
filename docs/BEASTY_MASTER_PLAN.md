@@ -131,3 +131,13 @@ Priority rule: deliver and test working end-to-end capability for Web Creator, A
 At the time this plan was added, the Android app has working chat with Gemini/Groq fallback, selectable Smart/Fast/Deep modes, manual speech input, text-to-speech, an openWakeWord-based background voice service, continuous voice conversation, and cue-based local Automatic Memory. The user has confirmed the wake-word/voice flow works in foreground, on the home screen, in other apps, and while locked. The user has confirmed a basic memory fact can be saved and recalled.
 
 The modules in this plan are not all implemented merely because they are documented here. Update this section and module status as development progresses.
+
+
+## 11. Visual Search and AI Image Creator — permission policy (2026-11-03)
+- BEASTY may automatically search available image sources for assets relevant to the user's website or image request, without asking for permission for each ordinary search.
+- Search must use available providers and respect their terms, licensing, attribution, API quotas, and rate limits. Do not promise access to every image on the internet or unlimited results.
+- BEASTY may automatically inspect candidate images for relevance and broken links, then select suitable assets for the website preview. Preserve source and licence/attribution details where available.
+- **AI image generation must be permission-gated.** If suitable search results are unavailable, or the user explicitly asks BEASTY to create an original image, ask the user before starting image generation.
+- Before any image-generation API call that may incur a charge, show the expected or estimated cost (or clearly say when it cannot be determined) and obtain explicit approval. No hidden charges, no automatic paid generation, and no assumption that a general "okay" approves a specific undisclosed charge.
+- If the user declines or does not approve, continue with suitable free/search assets where possible, or explain that an image cannot be supplied. Never silently switch to a paid provider.
+- This approval rule applies to future image-generation providers and must be reflected in the app's UI and AI instructions, not only in documentation.
