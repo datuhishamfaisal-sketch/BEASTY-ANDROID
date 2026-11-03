@@ -666,7 +666,16 @@ public class MainActivity extends Activity {
                 scrollView.fullScroll(View.FOCUS_DOWN)
         );
 
+        final boolean websiteRequest = message.toLowerCase(Locale.ROOT).contains("beasty web creator")
+                || message.toLowerCase(Locale.ROOT).contains("buat website")
+                || message.toLowerCase(Locale.ROOT).contains("bina website")
+                || message.toLowerCase(Locale.ROOT).contains("create a website");
+        awaitingWebsiteGeneration = websiteRequest;
+        final String creatorInstruction = websiteRequest
+                ? " WEBSITE CREATOR TASK: Generate a complete responsive website from the user's request. Return ONLY one valid JSON object, no markdown fences and no explanation, with string fields name, description, html, css, javascript. Put complete HTML in html, styling in css, and client-side behavior in javascript. Use mobile-first responsive design and accessible labels. Use realistic placeholder content where details are missing. Never invent real company contact details. Ensure html is substantial and ready for preview. Do not claim deployment. "
+                : "";
         final String instruction = getModeInstruction()
+                + creatorInstruction
                 + new PersonalMemory(this).getContext();
 
         final JSONArray historySnapshot = new JSONArray();
