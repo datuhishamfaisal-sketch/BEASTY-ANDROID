@@ -908,15 +908,15 @@ public class MainActivity extends Activity {
                 JSONObject grounding = candidate.optJSONObject("groundingMetadata");
                 JSONArray chunks = grounding == null ? null : grounding.optJSONArray("groundingChunks");
                 if (chunks != null && chunks.length() > 0) {
-                    StringBuilder sources = new StringBuilder("\\n\\nSources:");
+                    StringBuilder sources = new StringBuilder("Sources:");
                     for (int i = 0; i < chunks.length(); i++) {
                         JSONObject web = chunks.getJSONObject(i).optJSONObject("web");
                         if (web == null) continue;
                         String title = web.optString("title", "Web source");
                         String uri = web.optString("uri", "");
-                        if (!uri.isEmpty()) sources.append("\\n").append(title).append(": ").append(uri);
+                        if (!uri.isEmpty()) sources.append('\\n').append(title).append(": ").append(uri);
                     }
-                    if (sources.length() > 10) result.append(sources);
+                    if (sources.length() > 7) result.append("\\n\\n").append(sources);
                 }
             } catch (Exception ignored) { }
         }
