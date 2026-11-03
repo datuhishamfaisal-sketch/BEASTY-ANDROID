@@ -17,6 +17,8 @@ import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.KeywordSpotter
 import com.k2fsa.sherpa.onnx.KeywordSpotterConfig
 import com.k2fsa.sherpa.onnx.getKwsModelConfig
+import com.k2fsa.sherpa.onnx.getFeatureConfig
+import com.k2fsa.sherpa.onnx.getKeywordsFile
 
 class WakeWordService : Service() {
 
@@ -148,10 +150,10 @@ class WakeWordService : Service() {
                 checkpoint("detector_thread_started")
                 checkpoint("before_native_model_init")
                 val config = KeywordSpotterConfig(
-                    featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
+                    featConfig = getFeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
                     modelConfig = getKwsModelConfig(type = 1)
                         ?: throw IllegalStateException("English wake-word model config unavailable"),
-                    keywordsFile = "$MODEL_DIR/keywords.txt",
+                    keywordsFile = getKeywordsFile(type = 1),
                     keywordsScore = 1.5f,
                     keywordsThreshold = 0.25f
                 )
@@ -187,10 +189,20 @@ class WakeWordService : Service() {
                 val buffer = ShortArray(1600)
                 var lastAudioDiagnosticAt = 0L
                 var lastDecodeDiagnosticAt = 0L
+                var audioChunks = 0L
+                var readyDecodeCount = 0L
+                getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+                    .putLong("wake_audio_chunks", 0L)
+                    .putLong("wake_decode_count", 0L)
+                    .putLong("wake_ready_count", 0L)
+                    .putString("wake_last_keyword", "")
+                    .putString("wake_last_tokens", "")
+                    .apply()
                 while (running) {
                     val count = microphone.read(buffer, 0, buffer.size)
                     if (count > 0) {
                         val now = System.currentTimeMillis()
+                        audioChunks++
                         if (now - lastAudioDiagnosticAt >= 3000L) {
                             var energy = 0.0
                             for (i in 0 until count) {
@@ -199,13 +211,20 @@ class WakeWordService : Service() {
                             }
                             val rms = kotlin.math.sqrt(energy / count)
                             val level = (rms * 1000).toInt()
-                            checkpoint(if (level >= 8) "audio_input_detected_rms_$level" else "audio_input_low_rms_$level")
+                            checkpoint("audio_chunks_${audioChunks}_ready_${readyDecodeCount}_rms_${level}")
+                            getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+                                .putLong("wake_audio_chunks", audioChunks)
+                                .putLong("wake_decode_count", readyDecodeCount)
+                                .putLong("wake_ready_count", readyDecodeCount)
+                                .putLong("wake_diagnostic_at", now)
+                                .apply()
                             lastAudioDiagnosticAt = now
                         }
                         val samples = FloatArray(count) { buffer[it] / 32768.0f }
                         detectorStream.acceptWaveform(samples, SAMPLE_RATE)
                         while (running && detector.isReady(detectorStream)) {
                             detector.decode(detectorStream)
+                            readyDecodeCount++
                             val result = detector.getResult(detectorStream)
                             val diagnosticNow = System.currentTimeMillis()
                             if (diagnosticNow - lastDecodeDiagnosticAt >= 1500L) {
@@ -213,6 +232,9 @@ class WakeWordService : Service() {
                                     .putString("wake_last_keyword", result.keyword)
                                     .putString("wake_last_tokens", result.tokens.joinToString(" "))
                                     .putLong("wake_last_decode_at", diagnosticNow)
+                                    .putLong("wake_decode_count", readyDecodeCount)
+                                    .putLong("wake_ready_count", readyDecodeCount)
+                                    .putLong("wake_audio_chunks", audioChunks)
                                     .apply()
                                 lastDecodeDiagnosticAt = diagnosticNow
                             }
