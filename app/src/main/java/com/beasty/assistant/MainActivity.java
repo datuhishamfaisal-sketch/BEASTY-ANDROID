@@ -49,6 +49,7 @@ public class MainActivity extends Activity {
     private Button wakeButton;
     private boolean wakeWordEnabled = false;
     private boolean wakeTriggered = false;
+    private boolean restartWakeAfterSpeech = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private final BroadcastReceiver wakeReceiver = new BroadcastReceiver() {
@@ -628,6 +629,7 @@ public class MainActivity extends Activity {
                         + "Be helpful, accurate and friendly. "
                         + "Answer using the user's language. "
                         + instruction
+                        + " Write in plain natural text only. Never use emojis, emoticons, decorative symbols, bullet symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only."
         );
 
         systemParts.put(systemText);
@@ -702,6 +704,7 @@ public class MainActivity extends Activity {
                         + "Be helpful, accurate and friendly. "
                         + "Answer using the user's language. "
                         + instruction
+                        + " Write in plain natural text only. Never use emojis, emoticons, decorative symbols, bullet symbols, markdown formatting, dashes, hyphens, commas, semicolons or unnecessary special characters. Use simple sentences with normal full stops only."
         );
 
         messages.put(system);
@@ -925,40 +928,32 @@ public class MainActivity extends Activity {
                             "Voice recognition error: " + error,
                             Toast.LENGTH_SHORT).show();
                 });
-                if (wakeTriggered) {
-                    wakeTriggered = false;
-                    mainHandler.postDelayed(() -> {
-                        if (wakeWordEnabled) startWakeWordService();
-                    }, 1400);
-                }
+                wakeTriggered = false;
+                resumeWakeWordAfterSpeech();
             }
 
             @Override
             public void onResults(Bundle results) {
-
                 ArrayList<String> matches =
                         results.getStringArrayList(
                                 SpeechRecognizer.RESULTS_RECOGNITION
                         );
 
                 if (matches != null && !matches.isEmpty()) {
-
                     runOnUiThread(() -> {
                         inputMessage.setText(matches.get(0));
                         inputMessage.setSelection(inputMessage.getText().length());
                         if (wakeTriggered) {
                             wakeTriggered = false;
                             sendMessage();
-                            mainHandler.postDelayed(() -> {
-                                if (wakeWordEnabled) startWakeWordService();
-                            }, 1800);
                         }
                     });
+                } else {
+                    wakeTriggered = false;
                 }
 
-                runOnUiThread(() ->
-                        micButton.setText("🎙 MIC")
-                );
+                runOnUiThread(() -> micButton.setText("🎙 MIC"));
+                resumeWakeWordAfterSpeech();
             }
 
             @Override
@@ -1005,59 +1000,57 @@ public class MainActivity extends Activity {
     }
 
     private void startListening() {
-
         if (speechRecognizer == null) {
-
-            Toast.makeText(
-                    this,
-                    "Speech recognition unavailable",
-                    Toast.LENGTH_SHORT
-            ).show();
-
+            Toast.makeText(this, "Speech recognition unavailable", Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
-
-            requestPermissions(
-                    new String[]{Manifest.permission.RECORD_AUDIO},
-                    MIC_PERMISSION
-            );
-
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_PERMISSION);
             return;
         }
 
-        Intent intent = new Intent(
-                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
-        );
+        // Avoid simultaneous microphone capture by Sherpa and Android speech recognition.
+        if (wakeWordEnabled) {
+            restartWakeAfterSpeech = true;
+            Intent pause = new Intent(this, WakeWordService.class)
+                    .setAction(WakeWordService.ACTION_PAUSE);
+            startService(pause);
+            mainHandler.postDelayed(this::startSpeechRecognition, 700);
+        } else {
+            startSpeechRecognition();
+        }
+    }
 
-        intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-        );
-
-        intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE,
-                "ms-MY"
-        );
-
-        intent.putExtra(
-                RecognizerIntent.EXTRA_PARTIAL_RESULTS,
-                true
-        );
+    private void startSpeechRecognition() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ms-MY");
+        intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
 
         try {
             speechRecognizer.startListening(intent);
-
         } catch (Exception e) {
-
-            Toast.makeText(
-                    this,
-                    "Cannot start microphone",
-                    Toast.LENGTH_SHORT
-            ).show();
+            Toast.makeText(this, "Cannot start microphone", Toast.LENGTH_SHORT).show();
+            resumeWakeWordAfterSpeech();
         }
+    }
+
+    private void resumeWakeWordAfterSpeech() {
+        if (!wakeWordEnabled) {
+            restartWakeAfterSpeech = false;
+            return;
+        }
+        mainHandler.postDelayed(() -> {
+            if (wakeWordEnabled) {
+                Intent resume = new Intent(this, WakeWordService.class)
+                        .setAction(WakeWordService.ACTION_RESUME);
+                startService(resume);
+            }
+            restartWakeAfterSpeech = false;
+        }, 1200);
     }
 
     @Override
