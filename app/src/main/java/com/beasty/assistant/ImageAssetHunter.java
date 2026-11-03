@@ -19,67 +19,78 @@ public class ImageAssetHunter {
         LinkedHashMap<String, String> queries = buildQueries(userRequest);
         LinkedHashMap<String, JSONObject> found = new LinkedHashMap<>();
         for (String query : queries.keySet()) {
+            collectAllPages(query, found);
+        }
+        StringBuilder assets = new StringBuilder();
+        for (JSONObject asset : found.values()) {
+            assets.append("\\n- Title: ").append(asset.optString("title"))
+                    .append("\\n  Image URL: ").append(asset.optString("imageUrl"))
+                    .append("\\n  Source/license page: ").append(asset.optString("sourceUrl"))
+                    .append("\\n  License: ").append(asset.optString("license", "Check source page"))
+                    .append("\\n  Credit: ").append(asset.optString("credit", "See source page")).append("\\n");
+        }
+        return assets.toString();
+    }
+
+    /** Follow the API continuation token until the selected search has no more pages. */
+    private void collectAllPages(String query, LinkedHashMap<String, JSONObject> found) {
+        String continuation = "";
+        boolean more = true;
+        while (more) {
+            HttpURLConnection connection = null;
             try {
                 String endpoint = "https://commons.wikimedia.org/w/api.php?action=query&generator=search"
                         + "&gsrsearch=" + URLEncoder.encode(query, "UTF-8")
                         + "&gsrnamespace=6&gsrlimit=50&prop=imageinfo"
-                        + "&iiprop=url%7Cextmetadata&iiurlwidth=1400&format=json";
-                HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
+                        + "&iiprop=url%7Cextmetadata&iiurlwidth=1400&format=json"
+                        + (continuation.isEmpty() ? "" : "&gsrcontinue=" + URLEncoder.encode(continuation, "UTF-8"));
+                connection = (HttpURLConnection) new URL(endpoint).openConnection();
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(10000);
                 connection.setReadTimeout(12000);
-                connection.setRequestProperty("User-Agent", "BEASTY-Android/1.0 (website image research; contact: support@beasty.app)");
+                connection.setRequestProperty("User-Agent", "BEASTY-Android/1.0 (website image research)");
                 int code = connection.getResponseCode();
-                if (code < 200 || code >= 300) {
-                    connection.disconnect();
-                    continue;
-                }
+                if (code < 200 || code >= 300) return;
                 StringBuilder response = new StringBuilder();
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(
                         connection.getInputStream(), StandardCharsets.UTF_8))) {
                     String line;
                     while ((line = reader.readLine()) != null) response.append(line);
-                } finally {
-                    connection.disconnect();
                 }
                 JSONObject root = new JSONObject(response.toString());
                 JSONObject queryObject = root.optJSONObject("query");
                 JSONObject pages = queryObject == null ? null : queryObject.optJSONObject("pages");
-                if (pages == null) continue;
-                java.util.Iterator<String> keys = pages.keys();
-                while (keys.hasNext()) {
-                    JSONObject page = pages.optJSONObject(keys.next());
-                    if (page == null) continue;
-                    JSONArray infos = page.optJSONArray("imageinfo");
-                    if (infos == null || infos.length() == 0) continue;
-                    JSONObject info = infos.optJSONObject(0);
-                    if (info == null) continue;
-                    String imageUrl = info.optString("thumburl", info.optString("url", ""));
-                    String sourceUrl = info.optString("descriptionurl", "");
-                    if (!imageUrl.startsWith("https://") || !sourceUrl.startsWith("https://")) continue;
-                    JSONObject metadata = info.optJSONObject("extmetadata");
-                    JSONObject asset = new JSONObject();
-                    asset.put("title", page.optString("title", "Image"));
-                    asset.put("imageUrl", imageUrl);
-                    asset.put("sourceUrl", sourceUrl);
-                    asset.put("license", metadata == null ? "" : stripHtml(metadata.optJSONObject("LicenseShortName")));
-                    asset.put("credit", metadata == null ? "" : stripHtml(metadata.optJSONObject("Artist")));
-                    found.put(imageUrl, asset);
+                if (pages != null) {
+                    java.util.Iterator<String> keys = pages.keys();
+                    while (keys.hasNext()) {
+                        JSONObject page = pages.optJSONObject(keys.next());
+                        if (page == null) continue;
+                        JSONArray infos = page.optJSONArray("imageinfo");
+                        if (infos == null || infos.length() == 0) continue;
+                        JSONObject info = infos.optJSONObject(0);
+                        if (info == null) continue;
+                        String imageUrl = info.optString("thumburl", info.optString("url", ""));
+                        String sourceUrl = info.optString("descriptionurl", "");
+                        if (!imageUrl.startsWith("https://") || !sourceUrl.startsWith("https://")) continue;
+                        JSONObject metadata = info.optJSONObject("extmetadata");
+                        JSONObject asset = new JSONObject();
+                        asset.put("title", page.optString("title", "Image"));
+                        asset.put("imageUrl", imageUrl);
+                        asset.put("sourceUrl", sourceUrl);
+                        asset.put("license", metadata == null ? "" : stripHtml(metadata.optJSONObject("LicenseShortName")));
+                        asset.put("credit", metadata == null ? "" : stripHtml(metadata.optJSONObject("Artist")));
+                        found.put(imageUrl, asset);
+                    }
                 }
+                JSONObject next = root.optJSONObject("continue");
+                continuation = next == null ? "" : next.optString("gsrcontinue", "");
+                more = !continuation.isEmpty();
             } catch (Exception ignored) {
-                // Try the next focused search phrase if one request fails.
+                more = false;
+            } finally {
+                if (connection != null) connection.disconnect();
             }
-            // Continue through all matching results.
         }
-        StringBuilder assets = new StringBuilder();
-        for (JSONObject asset : found.values()) {
-            assets.append("\n- Title: ").append(asset.optString("title"))
-                    .append("\n  Image URL: ").append(asset.optString("imageUrl"))
-                    .append("\n  Source/license page: ").append(asset.optString("sourceUrl"))
-                    .append("\n  License: ").append(asset.optString("license", "Check source page"))
-                    .append("\n  Credit: ").append(asset.optString("credit", "See source page")).append("\n");
-        }
-        return assets.toString();
     }
 
     private LinkedHashMap<String, String> buildQueries(String request) {
