@@ -59,7 +59,9 @@ public class MainActivity extends Activity {
         @Override public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             String text = intent.getStringExtra(WakeWordService.EXTRA_TEXT);
-            if (WakeWordService.ACTION_WEB_CREATOR_REQUEST.equals(action)) {
+            if (WakeWordService.ACTION_WEB_PREVIEW_REQUEST.equals(action)) {
+                openLatestWebsitePreview();
+            } else if (WakeWordService.ACTION_WEB_CREATOR_REQUEST.equals(action)) {
                 if ("OPEN".equals(text)) {
                     awaitingWebsiteGeneration = true;
                     getSharedPreferences("beasty_web_creator", MODE_PRIVATE).edit()
