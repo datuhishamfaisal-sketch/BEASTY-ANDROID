@@ -698,6 +698,7 @@ public class MainActivity extends Activity {
                 : "";
         final String instruction = getModeInstruction()
                 + creatorInstruction
+                + BusinessHubRouter.buildInstruction(this, message)
                 + new PersonalMemory(this).getContext();
 
         final JSONArray historySnapshot = new JSONArray();
@@ -868,6 +869,11 @@ public class MainActivity extends Activity {
         // Gemini 3.8 Flash no longer needs legacy sampling parameters.
         config.put("maxOutputTokens", 4096);
         body.put("generationConfig", config);
+        if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) {
+            JSONArray searchTools = new JSONArray();
+            searchTools.put(new JSONObject().put("google_search", new JSONObject()));
+            body.put("tools", searchTools);
+        }
 
         String response = makeRequest(endpoint, body, null);
 
