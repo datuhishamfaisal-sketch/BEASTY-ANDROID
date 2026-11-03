@@ -105,8 +105,10 @@ public class MainActivity extends Activity {
             long audioChunks = diagnostics.getLong("wake_audio_chunks", 0L);
             long decodeCount = diagnostics.getLong("wake_decode_count", 0L);
             long diagnosticAt = diagnostics.getLong("wake_diagnostic_at", 0L);
+            String lastWakeError = diagnostics.getString("wake_last_error", "");
             if (lastWakeStage != null && !lastWakeStage.isEmpty()) {
                 String detail = "Stage: " + lastWakeStage
+                        + "\nError: " + lastWakeError
                         + "\nAudio chunks: " + audioChunks
                         + "\nDecoder runs: " + decodeCount
                         + "\nLast keyword: " + lastKeyword
@@ -996,6 +998,11 @@ public class MainActivity extends Activity {
 
     private void startWakeWordService() {
         try {
+            getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+                    .putString("wake_last_stage", "activity_before_start_foreground_service")
+                    .putString("wake_last_error", "")
+                    .putLong("wake_last_time", System.currentTimeMillis())
+                    .apply();
             Intent start = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_START);
             startForegroundService(start);
             wakeWordEnabled = true;
@@ -1004,9 +1011,16 @@ public class MainActivity extends Activity {
                 wakeButton.setBackground(shape(Color.rgb(10, 75, 70), CYAN, 16));
             }
             if (statusText != null) statusText.setText("● LISTENING");
-        } catch (Exception e) {
+        } catch (Throwable e) {
             wakeWordEnabled = false;
-            Toast.makeText(this, "Wake word could not start: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            String errorText = e.getClass().getName() + ": " + String.valueOf(e.getMessage());
+            getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+                    .putString("wake_last_stage", "activity_start_service_exception")
+                    .putString("wake_last_error", errorText)
+                    .putLong("wake_last_time", System.currentTimeMillis())
+                    .apply();
+            android.util.Log.e("BEASTY_WAKE_DIAG", "Activity could not start wake service", e);
+            Toast.makeText(this, "Wake word error: " + errorText, Toast.LENGTH_LONG).show();
         }
     }
 
