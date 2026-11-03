@@ -157,14 +157,19 @@ class WakeWordService : Service() {
                         }
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 running = false
-                showNotification("Wake word stopped: ${e.message ?: "initialization error"}")
+                android.util.Log.e("BEASTY_WAKE", "Wake-word detector crashed", e)
+                try {
+                    showNotification("Wake word error: ${e.javaClass.simpleName}")
+                } catch (notificationError: Throwable) {
+                    android.util.Log.e("BEASTY_WAKE", "Could not update wake notification", notificationError)
+                }
             } finally {
-                try { localRecorder?.stop() } catch (_: Exception) {}
-                localRecorder?.release()
-                localStream?.release()
-                localSpotter?.release()
+                try { localRecorder?.stop() } catch (_: Throwable) {}
+                try { localRecorder?.release() } catch (_: Throwable) {}
+                try { localStream?.release() } catch (_: Throwable) {}
+                try { localSpotter?.release() } catch (_: Throwable) {}
                 if (recorder === localRecorder) recorder = null
                 if (stream === localStream) stream = null
                 if (spotter === localSpotter) spotter = null
