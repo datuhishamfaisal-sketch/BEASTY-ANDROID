@@ -50,9 +50,14 @@ public class TrendHunter {
         trends.put(trend.toJson());
         return true;
     }
-
-    public synchronized JSONArray getTrends() {
+public synchronized JSONArray getTrends() {
+    try {
         return new JSONArray(trends.toString());
+    } catch (Exception e) {
+        return new JSONArray();
+    }
+}
+    
     }
 
     public synchronized JSONArray search(String keyword) {
