@@ -1,409 +1,250 @@
-
 package com.beasty.assistant;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.content.Intent;
-import android.speech.RecognizerIntent;
-import android.speech.tts.TextToSpeech;
+import android.graphics.Color;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.*;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.os.Handler;
-import android.os.Looper;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
+import android.text.InputType;
+import org.json.*;
+import java.net.*;
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Locale;
 
 public class MainActivity extends Activity {
 
-    private LinearLayout messages;
-    private EditText input;
-    private TextView status;
-    private Spinner modeSpinner;
-    private TextToSpeech tts;
+    LinearLayout mainLayout, chatLayout;
+    EditText input;
+    ScrollView scrollView;
+    Button sendButton;
 
-    private final String[] modes = {
-        "Smart Mode", "Fast Mode", "Deep Mode"
-    };
-
-    private static final int VOICE_REQUEST = 41;
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    String geminiKey = BuildConfig.GEMINI_API_KEY;
+    String groqKey = BuildConfig.GROQ_API_KEY;
 
     @Override
-    protected void onCreate(Bundle state) {
-        super.onCreate(state);
-        buildScreen();
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-        tts = new TextToSpeech(this, result -> {
-            if (result == TextToSpeech.SUCCESS) {
-                tts.setLanguage(new Locale("ms", "MY"));
-            }
-        });
-
-        addMessage("BEASTY",
-            "Hai! Saya BEASTY. Apa yang boleh saya bantu hari ini?");
-    }
-
-    private void buildScreen() {
-        LinearLayout page = new LinearLayout(this);
-        page.setOrientation(LinearLayout.VERTICAL);
-        page.setPadding(18, 18, 18, 14);
-        page.setBackgroundColor(Color.rgb(8, 17, 31));
+        mainLayout = new LinearLayout(this);
+        mainLayout.setOrientation(LinearLayout.VERTICAL);
+        mainLayout.setBackgroundColor(Color.rgb(5, 11, 18));
+        mainLayout.setPadding(20, 25, 20, 15);
 
         TextView title = new TextView(this);
-        title.setText("BEASTY");
-        title.setTextColor(Color.WHITE);
+        title.setText("BEASTY AI");
         title.setTextSize(28);
+        title.setTextColor(Color.CYAN);
         title.setGravity(Gravity.CENTER);
-        title.setTypeface(null, Typeface.BOLD);
-        page.addView(title);
+        mainLayout.addView(title);
 
-        status = new TextView(this);
-        status.setText("AI Assistant • Gemini + Groq");
-        status.setTextColor(Color.LTGRAY);
-        status.setGravity(Gravity.CENTER);
-        status.setPadding(4, 8, 4, 12);
-        page.addView(status);
+        TextView subtitle = new TextView(this);
+        subtitle.setText("Your Personal AI Assistant");
+        subtitle.setTextColor(Color.LTGRAY);
+        subtitle.setGravity(Gravity.CENTER);
+        mainLayout.addView(subtitle);
 
-        modeSpinner = new Spinner(this);
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-            this,
-            android.R.layout.simple_spinner_dropdown_item,
-            modes
-        );
-        modeSpinner.setAdapter(adapter);
-        page.addView(modeSpinner);
+        scrollView = new ScrollView(this);
+        chatLayout = new LinearLayout(this);
+        chatLayout.setOrientation(LinearLayout.VERTICAL);
+        chatLayout.setPadding(5, 20, 5, 20);
 
-        ScrollView scroll = new ScrollView(this);
-        messages = new LinearLayout(this);
-        messages.setOrientation(LinearLayout.VERTICAL);
-        messages.setPadding(2, 12, 2, 12);
-        scroll.addView(messages);
+        scrollView.addView(chatLayout);
 
-        page.addView(scroll,
-            new LinearLayout.LayoutParams(-1, 0, 1));
-
-        LinearLayout entry = new LinearLayout(this);
-        entry.setOrientation(LinearLayout.HORIZONTAL);
+        mainLayout.addView(scrollView,
+                new LinearLayout.LayoutParams(
+                        -1, 0, 1));
 
         input = new EditText(this);
-        input.setSingleLine(false);
-        input.setHint("Taip mesej...");
+        input.setHint("Ask BEASTY anything...");
         input.setTextColor(Color.WHITE);
-        input.setHintTextColor(Color.LTGRAY);
-        input.setBackgroundTintList(
-            android.content.res.ColorStateList.valueOf(
-                Color.rgb(70, 194, 168)
-            )
-        );
+        input.setHintTextColor(Color.GRAY);
+        input.setInputType(InputType.TYPE_CLASS_TEXT |
+                InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        mainLayout.addView(input);
 
-        entry.addView(input,
-            new LinearLayout.LayoutParams(0, -2, 1));
+        sendButton = new Button(this);
+        sendButton.setText("SEND");
+        mainLayout.addView(sendButton);
 
-        Button mic = new Button(this);
-        mic.setText("🎙");
-        mic.setOnClickListener(v -> startVoice());
-        entry.addView(mic);
+        sendButton.setOnClickListener(v -> sendMessage());
 
-        Button send = new Button(this);
-        send.setText("Hantar");
-        send.setOnClickListener(v -> sendMessage());
-        entry.addView(send);
+        setContentView(mainLayout);
 
-        page.addView(entry);
-
-        TextView modules = new TextView(this);
-        modules.setText(
-            "Client Memory • Business Hunter • Web Creator\n" +
-            "App Creator • Video Creator • Trend Hunter"
-        );
-        modules.setTextColor(Color.LTGRAY);
-        modules.setTextSize(11);
-        modules.setPadding(2, 12, 2, 2);
-        page.addView(modules);
-
-        setContentView(page);
+        addMessage("BEASTY",
+                "Hello! I am BEASTY. How can I help you today?");
     }
 
-    private void startVoice() {
-        try {
-            Intent intent = new Intent(
-                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
-            );
-            intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-            );
-            intent.putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE,
-                "ms-MY"
-            );
-            intent.putExtra(
-                RecognizerIntent.EXTRA_PROMPT,
-                "Cakap dengan BEASTY"
-            );
-            startActivityForResult(intent, VOICE_REQUEST);
+    void addMessage(String sender, String message) {
+        TextView text = new TextView(this);
+        text.setText(sender + "\n" + message);
+        text.setTextColor(Color.WHITE);
+        text.setTextSize(15);
+        text.setPadding(15, 12, 15, 12);
+        text.setBackgroundColor(Color.rgb(18, 35, 48));
 
-        } catch (Exception e) {
-            addMessage("BEASTY",
-                "Fungsi suara tidak tersedia pada peranti ini.");
-        }
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+        params.setMargins(0, 8, 0, 8);
+
+        chatLayout.addView(text, params);
+        scrollView.post(() ->
+                scrollView.fullScroll(View.FOCUS_DOWN));
     }
 
-    @Override
-    protected void onActivityResult(
-        int requestCode, int resultCode, Intent data
-    ) {
-        super.onActivityResult(requestCode, resultCode, data);
+    void sendMessage() {
+        String message = input.getText().toString().trim();
 
-        if (requestCode == VOICE_REQUEST &&
-            resultCode == RESULT_OK && data != null) {
-
-            ArrayList<String> results =
-                data.getStringArrayListExtra(
-                    RecognizerIntent.EXTRA_RESULTS
-                );
-
-            if (results != null && !results.isEmpty()) {
-                input.setText(results.get(0));
-                sendMessage();
-            }
-        }
-    }
-
-    private void sendMessage() {
-        String prompt = input.getText().toString().trim();
-
-        if (prompt.isEmpty()) return;
+        if (message.isEmpty()) return;
 
         input.setText("");
-        addMessage("ANDA", prompt);
-        status.setText("BEASTY sedang berfikir...");
+        addMessage("YOU", message);
+
+        sendButton.setEnabled(false);
+        addMessage("BEASTY", "Thinking...");
 
         new Thread(() -> {
-            String answer = askGemini(prompt);
-            String provider = "Gemini";
+            String response = askAI(message);
 
-            if (answer == null || answer.trim().isEmpty()) {
-                answer = askGroq(prompt);
-                provider = "Groq";
-            }
-
-            final String result =
-                (answer == null || answer.trim().isEmpty())
-                ? "AI tidak dapat dihubungi. Sila semak internet dan API key."
-                : answer;
-
-            final String used =
-                (answer == null || answer.trim().isEmpty())
-                ? "Offline" : provider;
-
-            handler.post(() -> {
-                status.setText("Sedia • " + used);
-                addMessage("BEASTY", result);
+            runOnUiThread(() -> {
+                chatLayout.removeViewAt(chatLayout.getChildCount() - 1);
+                addMessage("BEASTY", response);
+                sendButton.setEnabled(true);
             });
-
         }).start();
     }
 
-    private String systemPrompt() {
-        int position = modeSpinner.getSelectedItemPosition();
-        String mode = modes[position];
+    String askAI(String message) {
 
-        String detail;
-
-        if (mode.equals("Fast Mode")) {
-            detail = "Jawab ringkas dan terus kepada soalan.";
-        } else if (mode.equals("Deep Mode")) {
-            detail = "Berikan analisis mendalam, tersusun dan lengkap.";
-        } else {
-            detail = "Seimbangkan kepantasan dengan jawapan lengkap dan bijak.";
+        if (geminiKey != null && !geminiKey.isEmpty()) {
+            String result = callGemini(message);
+            if (result != null && !result.isEmpty()) return result;
         }
 
-        return "You are BEASTY, a helpful multilingual AI assistant. " +
-            detail +
-            " Respond in the same language as the user.";
+        if (groqKey != null && !groqKey.isEmpty()) {
+            String result = callGroq(message);
+            if (result != null && !result.isEmpty()) return result;
+        }
+
+        return "AI connection failed. Please check your API keys and internet connection.";
     }
 
-    private String askGemini(String prompt) {
-        if (BuildConfig.GEMINI_API_KEY.isEmpty()) return null;
-
+    String callGemini(String message) {
         try {
             URL url = new URL(
-                "https://generativelanguage.googleapis.com/v1beta/models/" +
-                "gemini-2.0-flash:generateContent?key=" +
-                BuildConfig.GEMINI_API_KEY
-            );
+                    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="
+                            + geminiKey);
 
-            JSONObject part = new JSONObject()
-                .put("text", systemPrompt() + "\nUser: " + prompt);
+            HttpURLConnection connection =
+                    (HttpURLConnection) url.openConnection();
 
-            JSONObject body = new JSONObject()
-                .put("contents",
-                    new JSONArray().put(
-                        new JSONObject().put(
-                            "parts", new JSONArray().put(part)
-                        )
-                    )
-                );
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
+            connection.setRequestProperty(
+                    "Content-Type", "application/json");
 
-            JSONObject response = post(url, body, null);
+            JSONObject textPart = new JSONObject();
+            textPart.put("text", message);
 
-            return response.getJSONArray("candidates")
-                .getJSONObject(0)
-                .getJSONObject("content")
-                .getJSONArray("parts")
-                .getJSONObject(0)
-                .optString("text", null);
+            JSONArray parts = new JSONArray();
+            parts.put(textPart);
 
-        } catch (Exception e) {
-    android.util.Log.e("BEASTY_GEMINI", "Gemini error", e);
-    return "GEMINI_ERROR: " + e.getMessage();
-}
-    
+            JSONObject content = new JSONObject();
+            content.put("parts", parts);
 
-    private String askGroq(String prompt) {
-        if (BuildConfig.GROQ_API_KEY.isEmpty()) return null;
+            JSONArray contents = new JSONArray();
+            contents.put(content);
 
-        try {
-            URL url = new URL(
-                "https://api.groq.com/openai/v1/chat/completions"
-            );
+            JSONObject body = new JSONObject();
+            body.put("contents", contents);
 
-            JSONArray msgs = new JSONArray()
-                .put(new JSONObject()
-                    .put("role", "system")
-                    .put("content", systemPrompt()))
-                .put(new JSONObject()
-                    .put("role", "user")
-                    .put("content", prompt));
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(body.toString().getBytes("UTF-8"));
+            }
 
-            JSONObject body = new JSONObject()
-                .put("model", "llama-3.3-70b-versatile")
-                .put("messages", msgs);
+            InputStream stream =
+                    connection.getResponseCode() < 400
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
 
-            JSONObject response =
-                post(url, body, BuildConfig.GROQ_API_KEY);
+            String response = readStream(stream);
 
-            return response.getJSONArray("choices")
-                .getJSONObject(0)
-                .getJSONObject("message")
-                .optString("content", null);
+            JSONObject json = new JSONObject(response);
+            return json.getJSONArray("candidates")
+                    .getJSONObject(0)
+                    .getJSONObject("content")
+                    .getJSONArray("parts")
+                    .getJSONObject(0)
+                    .getString("text");
 
         } catch (Exception e) {
             return null;
         }
     }
 
-    private JSONObject post(
-        URL url, JSONObject body, String bearer
-    ) throws Exception {
+    String callGroq(String message) {
+        try {
+            URL url = new URL(
+                    "https://api.groq.com/openai/v1/chat/completions");
 
-        HttpURLConnection connection =
-            (HttpURLConnection) url.openConnection();
+            HttpURLConnection connection =
+                    (HttpURLConnection) url.openConnection();
 
-        connection.setRequestMethod("POST");
-        connection.setConnectTimeout(20000);
-        connection.setReadTimeout(30000);
-        connection.setDoOutput(true);
+            connection.setRequestMethod("POST");
+            connection.setDoOutput(true);
 
-        connection.setRequestProperty(
-            "Content-Type", "application/json"
-        );
-
-        if (bearer != null) {
             connection.setRequestProperty(
-                "Authorization", "Bearer " + bearer
-            );
-        }
+                    "Content-Type", "application/json");
 
-        try (OutputStream out = connection.getOutputStream()) {
-            out.write(
-                body.toString().getBytes(StandardCharsets.UTF_8)
-            );
-        }
+            connection.setRequestProperty(
+                    "Authorization", "Bearer " + groqKey);
 
-        int code = connection.getResponseCode();
+            JSONObject body = new JSONObject();
+            body.put("model", "llama-3.3-70b-versatile");
 
-        InputStream stream =
-            code >= 200 && code < 300
-            ? connection.getInputStream()
-            : connection.getErrorStream();
+            JSONArray messages = new JSONArray();
 
-        if (stream == null) {
-            connection.disconnect();
-            throw new IOException("Tiada respons daripada server.");
-        }
+            JSONObject userMessage = new JSONObject();
+            userMessage.put("role", "user");
+            userMessage.put("content", message);
 
-        ByteArrayOutputStream bytes =
-            new ByteArrayOutputStream();
+            messages.put(userMessage);
+            body.put("messages", messages);
 
-        try (InputStream in = stream) {
-            byte[] buffer = new byte[4096];
-            int count;
-
-            while ((count = in.read(buffer)) != -1) {
-                bytes.write(buffer, 0, count);
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(body.toString().getBytes("UTF-8"));
             }
-        }
 
-        connection.disconnect();
+            InputStream stream =
+                    connection.getResponseCode() < 400
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
 
-        if (code < 200 || code >= 300) {
-            throw new IOException("HTTP error: " + code);
-        }
+            String response = readStream(stream);
 
-        return new JSONObject(
-            bytes.toString(StandardCharsets.UTF_8)
-        );
-    }
+            JSONObject json = new JSONObject(response);
 
-    private void addMessage(String who, String message) {
-        TextView bubble = new TextView(this);
+            return json.getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content");
 
-        bubble.setText(who + "\n" + message);
-        bubble.setTextColor(Color.WHITE);
-        bubble.setTextSize(15);
-        bubble.setPadding(14, 12, 14, 12);
-
-        bubble.setBackgroundColor(
-            who.equals("ANDA")
-            ? 0xFF183B55
-            : 0xFF12352F
-        );
-
-        LinearLayout.LayoutParams params =
-            new LinearLayout.LayoutParams(-1, -2);
-
-        params.setMargins(0, 5, 0, 5);
-        messages.addView(bubble, params);
-
-        if (who.equals("BEASTY") && tts != null) {
-            tts.speak(
-                message,
-                TextToSpeech.QUEUE_FLUSH,
-                null,
-                "beasty_reply"
-            );
+        } catch (Exception e) {
+            return null;
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        if (tts != null) {
-            tts.stop();
-            tts.shutdown();
+    String readStream(InputStream stream) throws Exception {
+        BufferedReader reader = new BufferedReader(
+                new InputStreamReader(stream, "UTF-8"));
+
+        StringBuilder result = new StringBuilder();
+        String line;
+
+        while ((line = reader.readLine()) != null) {
+            result.append(line);
         }
-        super.onDestroy();
+
+        reader.close();
+        return result.toString();
     }
 }
