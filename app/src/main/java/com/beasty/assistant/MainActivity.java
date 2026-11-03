@@ -501,6 +501,43 @@ public class MainActivity extends Activity {
         micButton.setOnClickListener(v -> startListening());
     }
 
+    private void showWebCreatorDialog() {
+        EditText description = new EditText(this);
+        description.setHint("Contoh: Website syarikat kontraktor dengan servis, galeri projek dan nombor WhatsApp");
+        description.setTextColor(WHITE);
+        description.setHintTextColor(Color.GRAY);
+        description.setMinLines(3);
+        description.setGravity(Gravity.TOP);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("BEASTY WEB CREATOR")
+                .setMessage("Terangkan website yang Boss mahu bina.")
+                .setView(description)
+                .setNegativeButton("BATAL", null)
+                .setPositiveButton("GENERATE", (dialog, which) -> {
+                    String request = description.getText().toString().trim();
+                    if (request.isEmpty()) {
+                        Toast.makeText(this, "Sila masukkan penerangan website.", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    inputMessage.setText("BEASTY WEB CREATOR: Bina website berdasarkan keperluan ini: " + request);
+                    sendMessage();
+                })
+                .show();
+    }
+
+    private void openLatestWebsitePreview() {
+        WebCreator creator = new WebCreator(this);
+        WebCreator.WebsiteProject project = creator.getLatestProject();
+        if (project == null || !creator.isReadyToPreview(project)) {
+            Toast.makeText(this, "Belum ada website tersimpan. Gunakan WEB CREATOR dahulu.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent preview = new Intent(this, WebPreviewActivity.class);
+        preview.putExtra("website_name", project.name);
+        preview.putExtra("website_html", creator.prepareWebsiteCode(project));
+        startActivity(preview);
+    }
+
     private Button createButton(String text, int color) {
 
         Button button = new Button(this);
