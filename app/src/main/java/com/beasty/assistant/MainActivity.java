@@ -630,13 +630,14 @@ public class MainActivity extends Activity {
         } catch (Exception ignored) {
         }
 
+        final String imageSearchRequest = message;
+
         new Thread(() -> {
 
             String answer = "";
             String geminiError = "";
             String groqError = "";
             ImageAssetHunter imageHunter = new ImageAssetHunter();
-            final String imageSearchRequest = message;
             String imageAssets = websiteRequest
                     ? imageHunter.searchForWebsite(imageSearchRequest) : "";
             String enrichedInstruction = instruction;
