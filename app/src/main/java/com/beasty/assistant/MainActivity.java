@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private Button sendButton;
     private Button micButton;
     private Button voiceButton;
-    private Button wakeButton;
+    private Button wakeButton;\n    private Button thinkingButton;
     private boolean wakeWordEnabled = false;
     private boolean wakeTriggered = false;
     private boolean restartWakeAfterSpeech = false;
@@ -244,261 +244,122 @@ public class MainActivity extends Activity {
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(14), dp(10), dp(14), dp(10));
+        root.setPadding(dp(14), dp(12), dp(14), dp(12));
         root.setBackgroundColor(BG);
 
-        // HEADER
-
+        // Minimal BEASTY HUD header with a compact text command field at top-right.
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(dp(12), dp(10), dp(12), dp(10));
-        header.setBackground(shape(PANEL, CYAN, 18));
+        header.setPadding(dp(4), dp(5), dp(4), dp(10));
 
         LinearLayout brand = new LinearLayout(this);
         brand.setOrientation(LinearLayout.VERTICAL);
-
-        TextView title = makeText("BEASTY", 25, WHITE, true);
-        TextView subtitle = makeText(
-                "NEXT GENERATION AI",
-                10,
-                CYAN,
-                true
-        );
-
+        TextView title = makeText("BEASTY", 27, WHITE, true);
+        TextView subtitle = makeText("AUTONOMOUS AI", 9, CYAN, true);
         brand.addView(title);
         brand.addView(subtitle);
+        header.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
 
-        header.addView(
-                brand,
-                new LinearLayout.LayoutParams(0, -2, 1)
-        );
-
-        LinearLayout statusBox = new LinearLayout(this);
-        statusBox.setOrientation(LinearLayout.VERTICAL);
-        statusBox.setGravity(Gravity.CENTER);
-        statusBox.setPadding(dp(10), dp(6), dp(10), dp(6));
-        statusBox.setBackground(shape(
-                Color.rgb(10, 55, 54),
-                CYAN,
-                15
-        ));
-
-        statusText = makeText("● ONLINE", 11, CYAN, true);
-        statusBox.addView(statusText);
-
-        header.addView(statusBox);
+        inputMessage = new EditText(this);
+        inputMessage.setHint("Ask BEASTY...");
+        inputMessage.setHintTextColor(Color.rgb(130, 160, 175));
+        inputMessage.setTextColor(WHITE);
+        inputMessage.setTextSize(11);
+        inputMessage.setSingleLine(true);
+        inputMessage.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
+        inputMessage.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        inputMessage.setPadding(dp(10), dp(5), dp(10), dp(5));
+        inputMessage.setBackground(shape(Color.rgb(15, 28, 43), CYAN, 18));
+        LinearLayout.LayoutParams commandParams =
+                new LinearLayout.LayoutParams(dp(142), dp(38));
+        commandParams.setMargins(dp(6), 0, 0, 0);
+        header.addView(inputMessage, commandParams);
         root.addView(header);
 
-        // MODE SELECTOR
+        statusText = makeText("● SYSTEM ONLINE", 10, CYAN, true);
+        statusText.setGravity(Gravity.CENTER);
+        statusText.setPadding(0, dp(3), 0, dp(8));
+        root.addView(statusText);
 
-        TextView modeLabel = makeText(
-                "AI INTELLIGENCE MODE",
-                10,
-                CYAN,
-                true
-        );
-
-        modeLabel.setPadding(dp(5), dp(12), 0, dp(5));
-        root.addView(modeLabel);
-
+        // Keep the existing mode engine; the THINKING control cycles its modes.
         modeSpinner = new Spinner(this);
+        ArrayAdapter<String> modeAdapter = new ArrayAdapter<>(
+                this, android.R.layout.simple_spinner_item,
+                new String[]{"Smart Mode", "Fast Mode", "Deep Mode"});
+        modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        modeSpinner.setAdapter(modeAdapter);
+        modeSpinner.setVisibility(View.GONE);
 
-        String[] modes = {
-                "Smart Mode",
-                "Fast Mode",
-                "Deep Mode"
-        };
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                this,
-                android.R.layout.simple_spinner_item,
-                modes
-        );
-
-        adapter.setDropDownViewResource(
-                android.R.layout.simple_spinner_dropdown_item
-        );
-
-        modeSpinner.setAdapter(adapter);
-        modeSpinner.setBackground(shape(PANEL, CYAN, 12));
-
-        root.addView(
-                modeSpinner,
-                new LinearLayout.LayoutParams(-1, dp(46))
-        );
-
-        // CHAT AREA
-
+        // Conversation remains the main workspace.
         LinearLayout chatPanel = new LinearLayout(this);
         chatPanel.setOrientation(LinearLayout.VERTICAL);
         chatPanel.setPadding(dp(8), dp(8), dp(8), dp(8));
-        chatPanel.setBackground(shape(PANEL, Color.rgb(35, 65, 85), 18));
+        chatPanel.setBackground(shape(Color.rgb(9, 20, 34), Color.rgb(25, 90, 105), 20));
 
-        TextView chatHeader = makeText(
-                "◈  BEASTY CONVERSATION",
-                11,
-                CYAN,
-                true
-        );
-
-        chatHeader.setPadding(dp(5), dp(5), dp(5), dp(8));
+        TextView chatHeader = makeText("LIVE CONVERSATION", 9,
+                Color.rgb(105, 190, 200), true);
+        chatHeader.setPadding(dp(7), dp(5), dp(7), dp(8));
         chatPanel.addView(chatHeader);
 
         scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
         scrollView.setVerticalScrollBarEnabled(false);
-
         chatLayout = new LinearLayout(this);
         chatLayout.setOrientation(LinearLayout.VERTICAL);
-        chatLayout.setPadding(dp(3), dp(5), dp(3), dp(5));
-
+        chatLayout.setPadding(dp(4), dp(5), dp(4), dp(5));
         scrollView.addView(chatLayout);
+        chatPanel.addView(scrollView, new LinearLayout.LayoutParams(-1, 0, 1));
+        root.addView(chatPanel, new LinearLayout.LayoutParams(-1, 0, 1));
 
-        chatPanel.addView(
-                scrollView,
-                new LinearLayout.LayoutParams(-1, 0, 1)
-        );
+        // Only two visible dashboard controls.
+        LinearLayout controls = new LinearLayout(this);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER);
+        controls.setPadding(0, dp(10), 0, dp(2));
 
-        root.addView(
-                chatPanel,
-                new LinearLayout.LayoutParams(-1, 0, 1)
-        );
+        wakeButton = createButton("WAKE WORD: OFF", Color.rgb(18, 48, 62));
+        thinkingButton = createButton("THINKING: SMART", Color.rgb(18, 48, 62));
+        LinearLayout.LayoutParams controlParams =
+                new LinearLayout.LayoutParams(0, dp(46), 1);
+        controlParams.setMargins(dp(4), 0, dp(4), 0);
+        controls.addView(wakeButton, controlParams);
+        controls.addView(thinkingButton, controlParams);
+        root.addView(controls);
 
-        // VOICE CONTROLS
-
-        LinearLayout voiceRow = new LinearLayout(this);
-        voiceRow.setOrientation(LinearLayout.HORIZONTAL);
-        voiceRow.setGravity(Gravity.CENTER);
-        voiceRow.setPadding(0, dp(9), 0, dp(5));
-
-        micButton = createButton("🎙 MIC", CYAN);
+        // Hidden compatibility controls: voice and send are handled by wake word
+        // and the keyboard action, so they are not shown on the dashboard.
+        micButton = createButton("MIC", CYAN);
         voiceEnabled = getSharedPreferences("beasty_voice", MODE_PRIVATE)
                 .getBoolean("voice_enabled", true);
-        voiceButton = createButton(voiceEnabled ? "VOICE ON" : "VOICE OFF", Color.rgb(55, 90, 130));
+        voiceButton = createButton("VOICE", Color.rgb(55, 90, 130));
+        sendButton = createButton("SEND", CYAN);
+        sendButton.setVisibility(View.GONE);
 
-        LinearLayout.LayoutParams voiceParams =
-                new LinearLayout.LayoutParams(0, dp(48), 1);
-
-        voiceParams.setMargins(dp(3), 0, dp(3), 0);
-
-        voiceRow.addView(micButton, voiceParams);
-        voiceRow.addView(voiceButton, voiceParams);
-
-        root.addView(voiceRow);
-
-        wakeButton = createButton("HEY JARVIS: OFF", Color.rgb(45, 65, 90));
-        LinearLayout.LayoutParams wakeParams = new LinearLayout.LayoutParams(-1, dp(46));
-        wakeParams.setMargins(dp(3), dp(2), dp(3), dp(5));
-        root.addView(wakeButton, wakeParams);
         wakeButton.setOnClickListener(v -> toggleWakeWord());
+        thinkingButton.setOnClickListener(v -> cycleThinkingMode());
 
-        // PERSONAL MEMORY BACKUP / RESTORE
-        LinearLayout memoryRow = new LinearLayout(this);
-        memoryRow.setOrientation(LinearLayout.HORIZONTAL);
-        memoryRow.setGravity(Gravity.CENTER);
-        memoryRow.setPadding(0, dp(2), 0, dp(4));
-
-        Button backupMemoryButton = createButton("BACKUP MEMORY", Color.rgb(45, 90, 115));
-        Button restoreMemoryButton = createButton("RESTORE MEMORY", Color.rgb(55, 90, 130));
-        LinearLayout.LayoutParams memoryButtonParams =
-                new LinearLayout.LayoutParams(0, dp(42), 1);
-        memoryButtonParams.setMargins(dp(3), 0, dp(3), 0);
-        memoryRow.addView(backupMemoryButton, memoryButtonParams);
-        memoryRow.addView(restoreMemoryButton, memoryButtonParams);
-        root.addView(memoryRow);
-
-        backupMemoryButton.setOnClickListener(v -> chooseMemoryBackupDestination());
-        restoreMemoryButton.setOnClickListener(v -> chooseMemoryBackupFile());
-
-        LinearLayout creatorRow = new LinearLayout(this);
-        creatorRow.setOrientation(LinearLayout.HORIZONTAL);
-        creatorRow.setGravity(Gravity.CENTER);
-        creatorRow.setPadding(0, dp(2), 0, dp(4));
-        Button webCreatorButton = createButton("WEB CREATOR", Color.rgb(0, 105, 125));
-        Button previewWebsiteButton = createButton("PREVIEW WEBSITE", Color.rgb(45, 90, 115));
-        LinearLayout.LayoutParams creatorButtonParams =
-                new LinearLayout.LayoutParams(0, dp(44), 1);
-        creatorButtonParams.setMargins(dp(3), 0, dp(3), 0);
-        creatorRow.addView(webCreatorButton, creatorButtonParams);
-        creatorRow.addView(previewWebsiteButton, creatorButtonParams);
-        root.addView(creatorRow);
-        webCreatorButton.setOnClickListener(v -> showWebCreatorDialog());
-        previewWebsiteButton.setOnClickListener(v -> openLatestWebsitePreview());
-
-        // MESSAGE INPUT
-
-        LinearLayout inputRow = new LinearLayout(this);
-        inputRow.setOrientation(LinearLayout.HORIZONTAL);
-        inputRow.setGravity(Gravity.CENTER_VERTICAL);
-        inputRow.setPadding(0, dp(4), 0, dp(3));
-
-        inputMessage = new EditText(this);
-        inputMessage.setHint("Message BEASTY...");
-        inputMessage.setHintTextColor(Color.rgb(140, 155, 175));
-        inputMessage.setTextColor(WHITE);
-        inputMessage.setTextSize(15);
-        inputMessage.setPadding(dp(15), dp(10), dp(10), dp(10));
-        inputMessage.setMinHeight(dp(52));
-        inputMessage.setMaxLines(4);
-        inputMessage.setInputType(
-                InputType.TYPE_CLASS_TEXT |
-                InputType.TYPE_TEXT_FLAG_MULTI_LINE |
-                InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
-        );
-        inputMessage.setBackground(shape(
-                Color.rgb(28, 39, 59),
-                CYAN,
-                16
-        ));
-
-        LinearLayout.LayoutParams editParams =
-                new LinearLayout.LayoutParams(0, dp(55), 1);
-
-        editParams.setMargins(0, 0, dp(7), 0);
-
-        inputRow.addView(inputMessage, editParams);
-
-        sendButton = createButton("SEND ➤", CYAN);
-
-        inputRow.addView(
-                sendButton,
-                new LinearLayout.LayoutParams(dp(90), dp(55))
-        );
-
-        root.addView(inputRow);
-
-        TextView footer = makeText(
-                "BEASTY AI  •  GEMINI + GROQ",
-                9,
-                Color.rgb(105, 130, 155),
-                false
-        );
-
-        footer.setGravity(Gravity.CENTER);
-        footer.setPadding(0, dp(5), 0, 0);
-        root.addView(footer);
-
-        setContentView(root);
-
-        sendButton.setOnClickListener(v -> sendMessage());
-
-        voiceButton.setOnClickListener(v -> {
-
-            voiceEnabled = !voiceEnabled;
-
-            voiceButton.setText(
-                    voiceEnabled ? "VOICE ON" : "VOICE OFF"
-            );
-
-            getSharedPreferences("beasty_voice", MODE_PRIVATE).edit()
-                    .putBoolean("voice_enabled", voiceEnabled).apply();
-            if (!voiceEnabled && textToSpeech != null) {
-                textToSpeech.stop();
+        inputMessage.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEND
+                    || (event != null
+                    && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == android.view.KeyEvent.ACTION_DOWN)) {
+                sendMessage();
+                return true;
             }
+            return false;
         });
 
-        micButton.setOnClickListener(v -> startListening());
+        setContentView(root);
+    }
+
+    private void cycleThinkingMode() {
+        if (modeSpinner == null || thinkingButton == null) return;
+        int next = (modeSpinner.getSelectedItemPosition() + 1) % 3;
+        modeSpinner.setSelection(next);
+        String[] labels = {"THINKING: SMART", "THINKING: FAST", "THINKING: DEEP"};
+        thinkingButton.setText(labels[next]);
     }
 
     private void showWebCreatorDialog() {
@@ -764,7 +625,7 @@ public class MainActivity extends Activity {
 
                 isThinking = false;
                 sendButton.setEnabled(true);
-                sendButton.setText("SEND ➤");
+                sendButton.setText("SEND");
 
                 if (statusText != null) {
                     statusText.setText("● ONLINE");
@@ -1210,7 +1071,7 @@ public class MainActivity extends Activity {
             Intent stop = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_STOP);
             startService(stop);
             wakeWordEnabled = false;
-            wakeButton.setText("HEY JARVIS: OFF");
+            wakeButton.setText("WAKE WORD: OFF");
             wakeButton.setBackground(shape(Color.rgb(45, 65, 90), Color.TRANSPARENT, 16));
             if (statusText != null) statusText.setText("● ONLINE");
             return;
@@ -1233,7 +1094,7 @@ public class MainActivity extends Activity {
             startForegroundService(start);
             wakeWordEnabled = true;
             if (wakeButton != null) {
-                wakeButton.setText("HEY JARVIS: ON • LISTENING");
+                wakeButton.setText("WAKE WORD: ON");
                 wakeButton.setBackground(shape(Color.rgb(10, 75, 70), CYAN, 16));
             }
             if (statusText != null) statusText.setText("● LISTENING");
