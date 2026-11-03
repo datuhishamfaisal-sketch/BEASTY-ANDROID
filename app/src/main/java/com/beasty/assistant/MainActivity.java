@@ -93,6 +93,18 @@ public class MainActivity extends Activity {
     private TextView statusText;
     private TextView thinkingView;
     private TextView coreGraphic;
+    private final Runnable thinkingPulse = new Runnable() {
+        @Override public void run() {
+            if (!isThinking || coreGraphic == null) return;
+            boolean expand = coreGraphic.getScaleX() < 1.05f;
+            float scale = expand ? 1.12f : 1.0f;
+            float alpha = expand ? 1.0f : 0.72f;
+            coreGraphic.animate().scaleX(scale).scaleY(scale).alpha(alpha)
+                    .setDuration(520).withEndAction(() -> {
+                        if (isThinking) mainHandler.postDelayed(thinkingPulse, 80);
+                    }).start();
+        }
+    };
 
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
@@ -384,6 +396,28 @@ public class MainActivity extends Activity {
         thinkingButton.setText(labels[next]);
     }
 
+    private void setThinkingVisual(boolean thinking) {
+        if (coreGraphic == null) return;
+        mainHandler.removeCallbacks(thinkingPulse);
+        if (thinking) {
+            coreGraphic.setText("◉");
+            coreGraphic.setTextSize(82);
+            coreGraphic.setShadowLayer(dp(26), 0, 0, CYAN);
+            coreGraphic.setScaleX(1.0f);
+            coreGraphic.setScaleY(1.0f);
+            coreGraphic.setAlpha(0.82f);
+            mainHandler.post(thinkingPulse);
+        } else {
+            coreGraphic.animate().cancel();
+            coreGraphic.setText("◎");
+            coreGraphic.setTextSize(76);
+            coreGraphic.setShadowLayer(dp(18), 0, 0, CYAN);
+            coreGraphic.setScaleX(1.0f);
+            coreGraphic.setScaleY(1.0f);
+            coreGraphic.setAlpha(1.0f);
+        }
+    }
+
     private void showWebCreatorDialog() {
         EditText description = new EditText(this);
         description.setHint("Contoh: Website kontraktor dengan servis, galeri projek dan WhatsApp");
@@ -574,11 +608,7 @@ public class MainActivity extends Activity {
         if (statusText != null) {
             statusText.setText("● THINKING");
         }
-        if (coreGraphic != null) {
-            coreGraphic.setText("◉");
-            coreGraphic.setTextSize(82);
-            coreGraphic.setShadowLayer(dp(24), 0, 0, CYAN);
-        }
+        setThinkingVisual(true);
 
         thinkingView = makeText(
                 "◈ BEASTY IS THINKING...",
@@ -698,11 +728,7 @@ public class MainActivity extends Activity {
                 if (statusText != null) {
                     statusText.setText("● ONLINE");
                 }
-                if (coreGraphic != null) {
-                    coreGraphic.setText("◎");
-                    coreGraphic.setTextSize(76);
-                    coreGraphic.setShadowLayer(dp(18), 0, 0, CYAN);
-                }
+                setThinkingVisual(false);
 
                 if (thinkingView != null) {
                     chatLayout.removeView(thinkingView);
@@ -1359,6 +1385,8 @@ public class MainActivity extends Activity {
             speechRecognizer.destroy();
         }
 
+        mainHandler.removeCallbacks(thinkingPulse);
+        if (coreGraphic != null) coreGraphic.animate().cancel();
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();
