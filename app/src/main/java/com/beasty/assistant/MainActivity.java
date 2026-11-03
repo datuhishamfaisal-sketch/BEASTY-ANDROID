@@ -503,17 +503,17 @@ public class MainActivity extends Activity {
 
     private void showWebCreatorDialog() {
         EditText description = new EditText(this);
-        description.setHint("Contoh: Website syarikat kontraktor dengan servis, galeri projek dan nombor WhatsApp");
+        description.setHint("Contoh: Website kontraktor dengan servis, galeri projek dan WhatsApp");
         description.setTextColor(WHITE);
         description.setHintTextColor(Color.GRAY);
         description.setMinLines(3);
         description.setGravity(Gravity.TOP);
-        new android.app.AlertDialog.Builder(this)
+        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
                 .setTitle("BEASTY WEB CREATOR")
-                .setMessage("Terangkan website yang Boss mahu bina.")
+                .setMessage("Terangkan website yang Boss mahu bina. BEASTY akan cuba mencari gambar berlesen yang sesuai.")
                 .setView(description)
                 .setNegativeButton("BATAL", null)
-                .setPositiveButton("GENERATE", (dialog, which) -> {
+                .setPositiveButton("GENERATE", (d, which) -> {
                     String request = description.getText().toString().trim();
                     if (request.isEmpty()) {
                         Toast.makeText(this, "Sila masukkan penerangan website.", Toast.LENGTH_SHORT).show();
@@ -522,7 +522,21 @@ public class MainActivity extends Activity {
                     inputMessage.setText("BEASTY WEB CREATOR: Bina website berdasarkan keperluan ini: " + request);
                     sendMessage();
                 })
-                .show();
+                .create();
+        dialog.setButton(android.app.AlertDialog.BUTTON_NEUTRAL, "CARI CONTOH GOOGLE",
+                (d, which) -> {
+                    String query = description.getText().toString().trim();
+                    if (query.isEmpty()) query = "modern professional website design inspiration";
+                    try {
+                        String encoded = URLEncoder.encode(query + " website design inspiration", "UTF-8");
+                        Intent browser = new Intent(Intent.ACTION_VIEW,
+                                android.net.Uri.parse("https://www.google.com/search?q=" + encoded));
+                        startActivity(browser);
+                    } catch (Exception e) {
+                        Toast.makeText(this, "Tidak dapat membuka carian Google.", Toast.LENGTH_SHORT).show();
+                    }
+                });
+        dialog.show();
     }
 
     private void openLatestWebsitePreview() {
