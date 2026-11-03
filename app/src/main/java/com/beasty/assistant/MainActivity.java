@@ -106,14 +106,47 @@ public class MainActivity extends Activity {
             long decodeCount = diagnostics.getLong("wake_decode_count", 0L);
             long diagnosticAt = diagnostics.getLong("wake_diagnostic_at", 0L);
             String lastWakeError = diagnostics.getString("wake_last_error", "");
+            String processExitInfo = "";
+            if (Build.VERSION.SDK_INT >= 30) {
+                try {
+                    android.app.ActivityManager activityManager =
+                            (android.app.ActivityManager) getSystemService(ACTIVITY_SERVICE);
+                    java.util.List<android.app.ApplicationExitInfo> exits =
+                            activityManager.getHistoricalProcessExitReasons(getPackageName(), 0, 3);
+                    if (exits != null && !exits.isEmpty()) {
+                        android.app.ApplicationExitInfo exit = exits.get(0);
+                        processExitInfo = "Previous process exit reason: " + exit.getReason()
+                                + "\\nExit status: " + exit.getStatus()
+                                + "\\nExit description: " + exit.getDescription();
+                        if (Build.VERSION.SDK_INT >= 31) {
+                            try (InputStream trace = exit.getTraceInputStream()) {
+                                if (trace != null) {
+                                    byte[] traceBytes = new byte[4096];
+                                    int traceLength = trace.read(traceBytes);
+                                    if (traceLength > 0) {
+                                        processExitInfo += "\\nNative/system trace: "
+                                                + new String(traceBytes, 0, traceLength, StandardCharsets.UTF_8);
+                                    }
+                                }
+                            } catch (Exception traceError) {
+                                processExitInfo += "\\nTrace unavailable: " + traceError.getClass().getSimpleName();
+                            }
+                        }
+                    }
+                } catch (Exception exitError) {
+                    processExitInfo = "Process exit diagnostic unavailable: "
+                            + exitError.getClass().getSimpleName() + ": " + exitError.getMessage();
+                }
+            }
             if (lastWakeStage != null && !lastWakeStage.isEmpty()) {
                 String detail = "Stage: " + lastWakeStage
-                        + "\nError: " + lastWakeError
-                        + "\nAudio chunks: " + audioChunks
-                        + "\nDecoder runs: " + decodeCount
-                        + "\nLast keyword: " + lastKeyword
-                        + "\nLast decoded tokens: " + lastTokens
-                        + "\nDiagnostic time: " + diagnosticAt;
+                        + "\\nError: " + lastWakeError
+                        + "\\n" + processExitInfo
+                        + "\\nAudio chunks: " + audioChunks
+                        + "\\nDecoder runs: " + decodeCount
+                        + "\\nLast keyword: " + lastKeyword
+                        + "\\nLast decoded tokens: " + lastTokens
+                        + "\\nDiagnostic time: " + diagnosticAt;
                 addMessage("WAKE DIAGNOSTIC", detail, false);
             }
         } catch (Exception ignored) {
