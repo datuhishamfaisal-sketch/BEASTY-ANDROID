@@ -12,6 +12,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.RecognizerIntent;
@@ -93,7 +94,12 @@ public class MainActivity extends Activity {
         createInterface();
         setupTextToSpeech();
         setupSpeechRecognition();
-        registerReceiver(wakeReceiver, new IntentFilter(WakeWordService.ACTION_WAKE_DETECTED), Context.RECEIVER_NOT_EXPORTED);
+        IntentFilter wakeFilter = new IntentFilter(WakeWordService.ACTION_WAKE_DETECTED);
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(wakeReceiver, wakeFilter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(wakeReceiver, wakeFilter);
+        }
 
         addMessage(
                 "BEASTY",
