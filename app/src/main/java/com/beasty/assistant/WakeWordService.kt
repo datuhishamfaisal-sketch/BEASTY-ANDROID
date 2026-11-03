@@ -372,7 +372,13 @@ class WakeWordService : Service() {
     }
 
     private fun generateAnswer(): String? {
+        val latestRequest = synchronized(conversationHistory) {
+            if (conversationHistory.length() > 0)
+                conversationHistory.optJSONObject(conversationHistory.length() - 1)?.optString("text", "").orEmpty()
+            else ""
+        }
         val instruction = "Gunakan Smart Mode. Seimbangkan kelajuan, kecerdasan dan jawapan yang lengkap. Jawab dalam bahasa pengguna." +
+            BusinessHubRouter.buildInstruction(this, latestRequest) +
             PersonalMemory(this).getContext()
         var geminiError = ""
         var groqError = ""
@@ -406,6 +412,10 @@ class WakeWordService : Service() {
         }
         body.put("contents", contents)
         body.put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 4096))
+        if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) {
+            val searchTools = JSONArray().put(JSONObject().put("google_search", JSONObject()))
+            body.put("tools", searchTools)
+        }
         val response = makeRequest(endpoint, body, null)
         val candidates = JSONObject(response).getJSONArray("candidates")
         if (candidates.length() == 0) throw IllegalStateException("Gemini returned no candidates")
