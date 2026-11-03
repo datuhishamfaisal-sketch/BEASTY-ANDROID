@@ -1,0 +1,56 @@
+name: BEASTY Android Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/sherpa-onnx-wakeword
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout BEASTY
+        uses: actions/checkout@v4
+
+      - name: Checkout official sherpa-onnx source
+        uses: actions/checkout@v4
+        with:
+          repository: k2-fsa/sherpa-onnx
+          ref: v2.0.1
+          path: sherpa-onnx
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Download official Android native libraries
+        working-directory: sherpa-onnx
+        run: |
+          wget -q https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-v2.0.1-android.tar.bz2
+          tar -xjf sherpa-onnx-v2.0.1-android.tar.bz2
+          mkdir -p android/SherpaOnnxAar/sherpa_onnx/src/main/jniLibs
+          cp -R jniLibs/* android/SherpaOnnxAar/sherpa_onnx/src/main/jniLibs/
+
+      - name: Build official sherpa-onnx AAR
+        working-directory: sherpa-onnx/android/SherpaOnnxAar
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :sherpa_onnx:assembleRelease --no-daemon
+          mkdir -p "$GITHUB_WORKSPACE/app/libs"
+          cp sherpa_onnx/build/outputs/aar/sherpa_onnx-release.aar "$GITHUB_WORKSPACE/app/libs/sherpa-onnx-2.0.1.aar"
+
+      - name: Build BEASTY debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload BEASTY APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BEASTY-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
