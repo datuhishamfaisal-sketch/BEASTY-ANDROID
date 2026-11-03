@@ -709,9 +709,21 @@ public class MainActivity extends Activity {
             String answer = "";
             String geminiError = "";
             String groqError = "";
+            String imageAssets = websiteRequest
+                    ? new ImageAssetHunter().searchForWebsite(message) : "";
+            String enrichedInstruction = instruction;
+            if (!imageAssets.isEmpty()) {
+                enrichedInstruction += " LICENSE-REVIEWED IMAGE CANDIDATES FOUND ONLINE (Wikimedia Commons). "
+                        + "Use suitable image URLs directly in the website HTML as responsive img elements. "
+                        + "Use only the supplied HTTPS Image URL values. Add visible image credits with links to each supplied Source/license page and preserve the listed license/credit. "
+                        + "Do not claim that these images came from Google. If none fit, use a tasteful CSS placeholder instead. "
+                        + "IMAGE CANDIDATES:\\n" + imageAssets;
+            } else if (websiteRequest) {
+                enrichedInstruction += " No reusable image candidates were retrieved. Do not invent image URLs or claim online images were inserted; use attractive CSS gradients/placeholders and tell the user image search was unavailable.";
+            }
 
             try {
-                answer = callGemini(historySnapshot, instruction);
+                answer = callGemini(historySnapshot, enrichedInstruction);
 
             } catch (Exception e) {
                 geminiError = e.getMessage();
@@ -720,7 +732,7 @@ public class MainActivity extends Activity {
             if (answer == null || answer.trim().isEmpty()) {
 
                 try {
-                    answer = callGroq(historySnapshot, instruction);
+                    answer = callGroq(historySnapshot, enrichedInstruction);
 
                 } catch (Exception e) {
                     groqError = e.getMessage();
