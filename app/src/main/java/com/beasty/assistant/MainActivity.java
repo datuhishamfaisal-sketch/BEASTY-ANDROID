@@ -92,13 +92,31 @@ public class MainActivity extends Activity {
         );
 
         createInterface();
-        setupTextToSpeech();
-        setupSpeechRecognition();
-        IntentFilter wakeFilter = new IntentFilter(WakeWordService.ACTION_WAKE_DETECTED);
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(wakeReceiver, wakeFilter, Context.RECEIVER_NOT_EXPORTED);
-        } else {
-            registerReceiver(wakeReceiver, wakeFilter);
+
+        // Optional voice components must never prevent the chat screen from opening.
+        try {
+            setupTextToSpeech();
+        } catch (Exception e) {
+            textToSpeech = null;
+            android.util.Log.e("BEASTY_STARTUP", "Text-to-speech initialization failed", e);
+        }
+
+        try {
+            setupSpeechRecognition();
+        } catch (Exception e) {
+            speechRecognizer = null;
+            android.util.Log.e("BEASTY_STARTUP", "Speech recognition initialization failed", e);
+        }
+
+        try {
+            IntentFilter wakeFilter = new IntentFilter(WakeWordService.ACTION_WAKE_DETECTED);
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(wakeReceiver, wakeFilter, Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                registerReceiver(wakeReceiver, wakeFilter);
+            }
+        } catch (Exception e) {
+            android.util.Log.e("BEASTY_STARTUP", "Wake receiver registration failed", e);
         }
 
         addMessage(
