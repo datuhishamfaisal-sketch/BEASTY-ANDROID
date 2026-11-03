@@ -23,7 +23,22 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Check API Keys
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          if [ -n "$GEMINI_API_KEY" ]; then
+            echo "GEMINI_API_KEY: FOUND"
+          else
+            echo "GEMINI_API_KEY: MISSING"
+          fi
 
+          if [ -n "$GROQ_API_KEY" ]; then
+            echo "GROQ_API_KEY: FOUND"
+          else
+            echo "GROQ_API_KEY: MISSING"
+          fi
       - name: Build APK
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
