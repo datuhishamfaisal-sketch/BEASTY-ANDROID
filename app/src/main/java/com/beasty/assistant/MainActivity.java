@@ -56,11 +56,20 @@ public class MainActivity extends Activity {
 
     private final BroadcastReceiver wakeReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
-            if (WakeWordService.ACTION_WAKE_DETECTED.equals(intent.getAction())) {
-                wakeTriggered = true;
-                continuousConversation = true;
+            String action = intent.getAction();
+            String text = intent.getStringExtra(WakeWordService.EXTRA_TEXT);
+            if (WakeWordService.ACTION_WAKE_DETECTED.equals(action)) {
+                wakeTriggered = false;
+                continuousConversation = false;
                 if (statusText != null) statusText.setText("● HEY JARVIS DETECTED");
-                mainHandler.postDelayed(() -> startListening(), 900);
+            } else if (WakeWordService.ACTION_VOICE_TRANSCRIPT.equals(action)) {
+                if (text != null && !text.trim().isEmpty()) addMessage("YOU", text, true);
+                if (statusText != null) statusText.setText("● THINKING");
+            } else if (WakeWordService.ACTION_VOICE_REPLY.equals(action)) {
+                if (text != null && !text.trim().isEmpty()) addMessage("BEASTY", text, false);
+                if (statusText != null) statusText.setText("● LISTENING");
+            } else if (WakeWordService.ACTION_VOICE_STATUS.equals(action)) {
+                if (statusText != null && text != null) statusText.setText("● " + text.toUpperCase(Locale.ROOT));
             }
         }
     };
@@ -171,7 +180,11 @@ public class MainActivity extends Activity {
         }
 
         try {
-            IntentFilter wakeFilter = new IntentFilter(WakeWordService.ACTION_WAKE_DETECTED);
+            IntentFilter wakeFilter = new IntentFilter();
+            wakeFilter.addAction(WakeWordService.ACTION_WAKE_DETECTED);
+            wakeFilter.addAction(WakeWordService.ACTION_VOICE_TRANSCRIPT);
+            wakeFilter.addAction(WakeWordService.ACTION_VOICE_REPLY);
+            wakeFilter.addAction(WakeWordService.ACTION_VOICE_STATUS);
             if (Build.VERSION.SDK_INT >= 33) {
                 registerReceiver(wakeReceiver, wakeFilter, Context.RECEIVER_NOT_EXPORTED);
             } else {
@@ -359,7 +372,9 @@ public class MainActivity extends Activity {
         voiceRow.setPadding(0, dp(9), 0, dp(5));
 
         micButton = createButton("🎙 MIC", CYAN);
-        voiceButton = createButton("VOICE ON", Color.rgb(55, 90, 130));
+        voiceEnabled = getSharedPreferences("beasty_voice", MODE_PRIVATE)
+                .getBoolean("voice_enabled", true);
+        voiceButton = createButton(voiceEnabled ? "VOICE ON" : "VOICE OFF", Color.rgb(55, 90, 130));
 
         LinearLayout.LayoutParams voiceParams =
                 new LinearLayout.LayoutParams(0, dp(48), 1);
@@ -442,6 +457,8 @@ public class MainActivity extends Activity {
                     voiceEnabled ? "VOICE ON" : "VOICE OFF"
             );
 
+            getSharedPreferences("beasty_voice", MODE_PRIVATE).edit()
+                    .putBoolean("voice_enabled", voiceEnabled).apply();
             if (!voiceEnabled && textToSpeech != null) {
                 textToSpeech.stop();
             }
