@@ -115,37 +115,40 @@ class WakeWordService : Service() {
                         ?: throw IllegalStateException("English wake-word model config unavailable"),
                     keywordsFile = "$MODEL_DIR/keywords.txt"
                 )
-                localSpotter = KeywordSpotter(application.assets, config)
-                spotter = localSpotter
-                localStream = localSpotter.createStream()
-                stream = localStream
+                val detector = KeywordSpotter(application.assets, config)
+                localSpotter = detector
+                spotter = detector
+                val detectorStream = detector.createStream()
+                localStream = detectorStream
+                stream = detectorStream
 
                 val minBuffer = AudioRecord.getMinBufferSize(
                     SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
                 )
                 if (minBuffer <= 0) throw IllegalStateException("AudioRecord buffer unavailable")
-                localRecorder = AudioRecord(
+                val microphone = AudioRecord(
                     MediaRecorder.AudioSource.MIC, SAMPLE_RATE,
                     AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
                     minBuffer * 2
                 )
-                if (localRecorder.state != AudioRecord.STATE_INITIALIZED) {
+                localRecorder = microphone
+                if (microphone.state != AudioRecord.STATE_INITIALIZED) {
                     throw IllegalStateException("Microphone could not be initialized")
                 }
-                recorder = localRecorder
-                localRecorder.startRecording()
+                recorder = microphone
+                microphone.startRecording()
 
                 val buffer = ShortArray(1600)
                 while (running) {
-                    val count = localRecorder.read(buffer, 0, buffer.size)
+                    val count = microphone.read(buffer, 0, buffer.size)
                     if (count > 0) {
                         val samples = FloatArray(count) { buffer[it] / 32768.0f }
-                        localStream.acceptWaveform(samples, SAMPLE_RATE)
-                        while (running && localSpotter.isReady(localStream)) {
-                            localSpotter.decode(localStream)
-                            val keyword = localSpotter.getResult(localStream).keyword
+                        detectorStream.acceptWaveform(samples, SAMPLE_RATE)
+                        while (running && detector.isReady(detectorStream)) {
+                            detector.decode(detectorStream)
+                            val keyword = detector.getResult(detectorStream).keyword
                             if (keyword.isNotBlank()) {
-                                localSpotter.reset(localStream)
+                                detector.reset(detectorStream)
                                 running = false
                                 showNotification("Hey BEASTY detected — tap to talk")
                                 sendBroadcast(Intent(ACTION_WAKE_DETECTED).setPackage(packageName))
