@@ -148,15 +148,28 @@ class WakeWordService : Service() {
             var wakeDetected = false
             try {
                 checkpoint("detector_thread_started")
-                checkpoint("before_native_model_init")
+                checkpoint("before_sherpa_jni_load")
+                System.loadLibrary("sherpa-onnx-jni")
+                checkpoint("sherpa_jni_loaded")
+
+                checkpoint("before_kws_model_config")
+                val modelConfig = getKwsModelConfig(type = 1)
+                    ?: throw IllegalStateException("English wake-word model config unavailable")
+                checkpoint("kws_model_config_ready")
+
+                val featureConfig = getFeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80)
+                val keywordFile = getKeywordsFile(type = 1)
+                checkpoint("before_keywordspotter_config")
                 val config = KeywordSpotterConfig(
-                    featConfig = getFeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
-                    modelConfig = getKwsModelConfig(type = 1)
-                        ?: throw IllegalStateException("English wake-word model config unavailable"),
-                    keywordsFile = getKeywordsFile(type = 1),
+                    featConfig = featureConfig,
+                    modelConfig = modelConfig,
+                    keywordsFile = keywordFile,
                     keywordsScore = 1.5f,
                     keywordsThreshold = 0.25f
                 )
+                checkpoint("keywordspotter_config_ready")
+
+                checkpoint("before_keywordspotter_native_create")
                 val detector = KeywordSpotter(application.assets, config)
                 checkpoint("native_model_initialized")
                 localSpotter = detector
