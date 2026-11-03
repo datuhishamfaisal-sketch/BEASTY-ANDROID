@@ -44,6 +44,7 @@ class WakeWordService : Service() {
         const val ACTION_VOICE_TRANSCRIPT = "com.beasty.assistant.VOICE_TRANSCRIPT"
         const val ACTION_VOICE_REPLY = "com.beasty.assistant.VOICE_REPLY"
         const val ACTION_VOICE_STATUS = "com.beasty.assistant.VOICE_STATUS"
+        const val ACTION_WEB_CREATOR_REQUEST = "com.beasty.assistant.WEB_CREATOR_REQUEST"
         const val EXTRA_TEXT = "text"
         const val EXTRA_WAKE_DETECTED = "wake_detected"
         private const val CHANNEL_ID = "beasty_wake_word"
@@ -215,6 +216,26 @@ class WakeWordService : Service() {
                     }
                     sendBroadcast(Intent(ACTION_VOICE_TRANSCRIPT).setPackage(packageName)
                         .putExtra(EXTRA_TEXT, spoken))
+                    val normalizedCommand = spoken.lowercase(java.util.Locale.ROOT)
+                        .replace(Regex("[^a-z0-9\\s]"), " ").replace(Regex("\\s+"), " ").trim()
+                    val openWebCreator = normalizedCommand.contains("bawa aku ke web creator")
+                        || normalizedCommand.contains("buka web creator")
+                        || normalizedCommand.contains("open web creator")
+                        || normalizedCommand == "web creator"
+                    val creatorPrefs = getSharedPreferences("beasty_web_creator", MODE_PRIVATE)
+                    if (openWebCreator) {
+                        creatorPrefs.edit().putBoolean("awaiting_voice_request", true).apply()
+                        sendBroadcast(Intent(ACTION_WEB_CREATOR_REQUEST).setPackage(packageName)
+                            .putExtra(EXTRA_TEXT, "OPEN"))
+                        speakAnswer("Web Creator sudah sedia. Terangkan website yang Boss mahu bina.")
+                        return
+                    }
+                    if (creatorPrefs.getBoolean("awaiting_voice_request", false)) {
+                        creatorPrefs.edit().putBoolean("awaiting_voice_request", false).apply()
+                        sendBroadcast(Intent(ACTION_WEB_CREATOR_REQUEST).setPackage(packageName)
+                            .putExtra(EXTRA_TEXT, spoken))
+                        return
+                    }
                     val memory = PersonalMemory(this@WakeWordService)
                     val memoryCommandReply = memory.handleCommand(spoken)
                     if (memoryCommandReply != null) {
