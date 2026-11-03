@@ -141,3 +141,14 @@ The modules in this plan are not all implemented merely because they are documen
 - Before any image-generation API call that may incur a charge, show the expected or estimated cost (or clearly say when it cannot be determined) and obtain explicit approval. No hidden charges, no automatic paid generation, and no assumption that a general "okay" approves a specific undisclosed charge.
 - If the user declines or does not approve, continue with suitable free/search assets where possible, or explain that an image cannot be supplied. Never silently switch to a paid provider.
 - This approval rule applies to future image-generation providers and must be reflected in the app's UI and AI instructions, not only in documentation.
+
+
+## Business Hub: natural-language autonomous research
+
+- Users can state a goal in ordinary Malay or English without naming a module or selecting a module button.
+- The app routes requests to Business Hunter, Trend Hunter, Supplier Hunter, Tender Hunter, Market Research, Auto Business Planner, Lead Manager, and AI Negotiator based on intent.
+- Business Hub research requests use Gemini Google Search grounding through the Gemini generateContent API when available, and display returned grounding source links.
+- If Gemini live search is unavailable and the app falls back to Groq, BEASTY must clearly disclose that live research could not be verified rather than invent current findings.
+- Current supplier details, prices, tender status, dates, and contact details must not be fabricated.
+- Sending messages, payments, purchases, tender submissions, publishing, or other external/irreversible actions still require explicit user approval.
+- Voice requests use the existing Hey Jarvis wake-word service; no new module-specific dashboard buttons are required.
