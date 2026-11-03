@@ -43,21 +43,22 @@ public class TrendHunter {
 
     public synchronized boolean addTrend(Trend trend) {
         if (trend == null || trend.title == null
-            || trend.title.trim().isEmpty()) {
+                || trend.title.trim().isEmpty()) {
             return false;
         }
 
         trends.put(trend.toJson());
         return true;
     }
-public synchronized JSONArray getTrends() {
-    try {
-        return new JSONArray(trends.toString());
-    } catch (Exception e) {
-        return new JSONArray();
-    }
-}
-    
+
+    public synchronized JSONArray getTrends() {
+        JSONArray copy = new JSONArray();
+
+        for (int i = 0; i < trends.length(); i++) {
+            copy.put(trends.optJSONObject(i));
+        }
+
+        return copy;
     }
 
     public synchronized JSONArray search(String keyword) {
@@ -73,11 +74,11 @@ public synchronized JSONArray getTrends() {
             if (item == null) continue;
 
             String searchable =
-                item.optString("title") + " " +
-                item.optString("category") + " " +
-                item.optString("description") + " " +
-                item.optString("location") + " " +
-                item.optString("opportunity");
+                    item.optString("title") + " " +
+                    item.optString("category") + " " +
+                    item.optString("description") + " " +
+                    item.optString("location") + " " +
+                    item.optString("opportunity");
 
             if (searchable.toLowerCase().contains(query)) {
                 results.put(item);
@@ -88,8 +89,8 @@ public synchronized JSONArray getTrends() {
     }
 
     public synchronized boolean updateOpportunity(
-        int index, String opportunity
-    ) {
+            int index, String opportunity) {
+
         JSONObject item = trends.optJSONObject(index);
 
         if (item == null || opportunity == null) return false;
@@ -108,7 +109,22 @@ public synchronized JSONArray getTrends() {
             return false;
         }
 
-        trends.remove(index);
+        JSONArray updated = new JSONArray();
+
+        for (int i = 0; i < trends.length(); i++) {
+            if (i != index) {
+                updated.put(trends.optJSONObject(i));
+            }
+        }
+
+        while (trends.length() > 0) {
+            trends.remove(0);
+        }
+
+        for (int i = 0; i < updated.length(); i++) {
+            trends.put(updated.optJSONObject(i));
+        }
+
         return true;
     }
 
