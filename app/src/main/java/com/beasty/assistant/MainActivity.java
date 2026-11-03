@@ -200,6 +200,7 @@ public class MainActivity extends Activity {
             wakeFilter.addAction(WakeWordService.ACTION_VOICE_TRANSCRIPT);
             wakeFilter.addAction(WakeWordService.ACTION_VOICE_REPLY);
             wakeFilter.addAction(WakeWordService.ACTION_VOICE_STATUS);
+            wakeFilter.addAction(WakeWordService.ACTION_WEB_CREATOR_REQUEST);
             if (Build.VERSION.SDK_INT >= 33) {
                 registerReceiver(wakeReceiver, wakeFilter, Context.RECEIVER_NOT_EXPORTED);
             } else {
@@ -719,9 +720,6 @@ public class MainActivity extends Activity {
                     }
 
                     speak(userFacingAnswer);
-                    if (websiteSaved) {
-                        mainHandler.postDelayed(() -> openLatestWebsitePreview(), 450);
-                    }
                     if (!voiceEnabled || textToSpeech == null
                             || finalAnswer.contains("BEASTY CONNECTION ERROR")) {
                         scheduleContinuousListening();
@@ -1199,3 +1197,170 @@ public class MainActivity extends Activity {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, MIC_PERMISSION);
+            return;
+        }
+
+        // Avoid simultaneous microphone capture by Sherpa and Android speech recognition.
+        if (wakeWordEnabled) {
+            restartWakeAfterSpeech = true;
+            Intent pause = new Intent(this, WakeWordService.class)
+                    .setAction(WakeWordService.ACTION_PAUSE);
+            startService(pause);
+            mainHandler.postDelayed(this::startSpeechRecognition, 700);
+        } else {
+            startSpeechRecognition();
+        }
+    }
+
+    private void startSpeechRecognition() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ms-MY");
+        intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+
+        try {
+            speechRecognizer.startListening(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Cannot start microphone", Toast.LENGTH_SHORT).show();
+            resumeWakeWordAfterSpeech();
+        }
+    }
+
+    private void resumeWakeWordAfterSpeech() {
+        if (!wakeWordEnabled) {
+            restartWakeAfterSpeech = false;
+            return;
+        }
+        mainHandler.postDelayed(() -> {
+            if (wakeWordEnabled) {
+                Intent resume = new Intent(this, WakeWordService.class)
+                        .setAction(WakeWordService.ACTION_RESUME);
+                startService(resume);
+            }
+            restartWakeAfterSpeech = false;
+        }, 1200);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults
+    ) {
+
+        super.onRequestPermissionsResult(
+                requestCode,
+                permissions,
+                grantResults
+        );
+
+        if (requestCode == MIC_PERMISSION
+                && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startListening();
+        }
+        if (requestCode == 101 && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startWakeWordService();
+        }
+    }
+
+    private static final int REQUEST_MEMORY_BACKUP_EXPORT = 7201;
+    private static final int REQUEST_MEMORY_BACKUP_IMPORT = 7202;
+
+    private void chooseMemoryBackupDestination() {
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        intent.putExtra(Intent.EXTRA_TITLE, "BEASTY-memory-backup.json");
+        try {
+            startActivityForResult(intent, REQUEST_MEMORY_BACKUP_EXPORT);
+        } catch (Exception e) {
+            Toast.makeText(this, "Tidak dapat membuka pilihan lokasi fail.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void chooseMemoryBackupFile() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        try {
+            startActivityForResult(intent, REQUEST_MEMORY_BACKUP_IMPORT);
+        } catch (Exception e) {
+            Toast.makeText(this, "Tidak dapat membuka pemilih fail.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK || data == null || data.getData() == null) return;
+
+        final android.net.Uri uri = data.getData();
+        if (requestCode == REQUEST_MEMORY_BACKUP_EXPORT) {
+            try {
+                PersonalMemory memory = new PersonalMemory(this);
+                JSONObject backup = memory.exportBackup();
+                try (OutputStream output = getContentResolver().openOutputStream(uri)) {
+                    if (output == null) throw new Exception("Tidak dapat menulis fail.");
+                    output.write(backup.toString(2).getBytes(StandardCharsets.UTF_8));
+                    output.flush();
+                }
+                Toast.makeText(this,
+                        "Backup berjaya. " + backup.getJSONArray("facts").length()
+                                + " memory disimpan.",
+                        Toast.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Toast.makeText(this, "Backup gagal: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            }
+        } else if (requestCode == REQUEST_MEMORY_BACKUP_IMPORT) {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Pulihkan memory BEASTY?")
+                    .setMessage("Memory daripada fail akan digabungkan dengan memory sedia ada. Memory berganda akan dielakkan. Teruskan?")
+                    .setNegativeButton("BATAL", null)
+                    .setPositiveButton("PULIHKAN", (dialog, which) -> importMemoryBackup(uri))
+                    .show();
+        }
+    }
+
+    private void importMemoryBackup(android.net.Uri uri) {
+        try {
+            String jsonText;
+            try (InputStream input = getContentResolver().openInputStream(uri)) {
+                if (input == null) throw new Exception("Fail tidak dapat dibaca.");
+                java.io.ByteArrayOutputStream buffer = new java.io.ByteArrayOutputStream();
+                byte[] chunk = new byte[4096];
+                int count;
+                while ((count = input.read(chunk)) != -1) {
+                    if (buffer.size() + count > 1024 * 1024) {
+                        throw new Exception("Fail backup terlalu besar.");
+                    }
+                    buffer.write(chunk, 0, count);
+                }
+                jsonText = buffer.toString("UTF-8");
+            }
+            int restored = new PersonalMemory(this).restoreBackup(jsonText);
+            Toast.makeText(this, "Restore berjaya. " + restored
+                    + " memory baharu dipulihkan.", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Restore gagal: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+
+        try { unregisterReceiver(wakeReceiver); } catch (Exception ignored) {}
+        if (speechRecognizer != null) {
+            speechRecognizer.destroy();
+        }
+
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
+
+        super.onDestroy();
+    }
+}
