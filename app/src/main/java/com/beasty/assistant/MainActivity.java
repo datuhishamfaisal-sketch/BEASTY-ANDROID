@@ -102,10 +102,16 @@ public class MainActivity extends Activity {
             String lastWakeStage = diagnostics.getString("wake_last_stage", "");
             String lastKeyword = diagnostics.getString("wake_last_keyword", "");
             String lastTokens = diagnostics.getString("wake_last_tokens", "");
+            long audioChunks = diagnostics.getLong("wake_audio_chunks", 0L);
+            long decodeCount = diagnostics.getLong("wake_decode_count", 0L);
+            long diagnosticAt = diagnostics.getLong("wake_diagnostic_at", 0L);
             if (lastWakeStage != null && !lastWakeStage.isEmpty()) {
                 String detail = "Stage: " + lastWakeStage
+                        + "\nAudio chunks: " + audioChunks
+                        + "\nDecoder runs: " + decodeCount
                         + "\nLast keyword: " + lastKeyword
-                        + "\nLast decoded tokens: " + lastTokens;
+                        + "\nLast decoded tokens: " + lastTokens
+                        + "\nDiagnostic time: " + diagnosticAt;
                 addMessage("WAKE DIAGNOSTIC", detail, false);
             }
         } catch (Exception ignored) {
