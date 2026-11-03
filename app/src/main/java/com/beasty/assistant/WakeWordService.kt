@@ -185,9 +185,22 @@ class WakeWordService : Service() {
                 checkpoint("microphone_recording_started")
 
                 val buffer = ShortArray(1600)
+                var lastAudioDiagnosticAt = 0L
                 while (running) {
                     val count = microphone.read(buffer, 0, buffer.size)
                     if (count > 0) {
+                        val now = System.currentTimeMillis()
+                        if (now - lastAudioDiagnosticAt >= 3000L) {
+                            var energy = 0.0
+                            for (i in 0 until count) {
+                                val sample = buffer[i] / 32768.0
+                                energy += sample * sample
+                            }
+                            val rms = kotlin.math.sqrt(energy / count)
+                            val level = (rms * 1000).toInt()
+                            checkpoint(if (level >= 8) "audio_input_detected_rms_$level" else "audio_input_low_rms_$level")
+                            lastAudioDiagnosticAt = now
+                        }
                         val samples = FloatArray(count) { buffer[it] / 32768.0f }
                         detectorStream.acceptWaveform(samples, SAMPLE_RATE)
                         while (running && detector.isReady(detectorStream)) {
