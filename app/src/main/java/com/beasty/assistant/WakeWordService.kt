@@ -431,10 +431,10 @@ class WakeWordService : Service() {
                     for (i in 0 until chunks.length()) {
                         val web = chunks.optJSONObject(i)?.optJSONObject("web") ?: continue
                         val uri = web.optString("uri", "")
-                        if (uri.isNotEmpty()) sources.append('\\n')
+                        if (uri.isNotEmpty()) sources.append('\n')
                             .append(web.optString("title", "Web source")).append(": ").append(uri)
                     }
-                    if (sources.length > 7) output.append("\\n\\n").append(sources)
+                    if (sources.length > 7) output.append("\n\n").append(sources)
                 }
             } catch (_: Throwable) { }
         }
