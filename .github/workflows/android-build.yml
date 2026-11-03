@@ -59,15 +59,14 @@ jobs:
           cp "$MODEL_DIR"/joiner-epoch-12-avg-2-chunk-16-left-64.onnx "$ASSET_DIR"/
           cp "$MODEL_DIR"/tokens.txt "$ASSET_DIR"/
           cp "$MODEL_DIR"/bpe.model "$ASSET_DIR"/
-          python3 -m pip install --quiet sentencepiece
-          python3 - <<'PY'
-          import sentencepiece as spm
-          model = spm.SentencePieceProcessor(model_file="sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01/bpe.model")
-          pieces = model.encode("HEY BEASTY", out_type=str)
-          with open("app/src/main/assets/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01/keywords.txt", "w", encoding="utf-8") as f:
-              f.write(" ".join(pieces) + "\n")
-          print("Generated Hey BEASTY keyword tokens:", pieces)
-          PY
+          printf 'HEY BEASTY\n' > keywords_raw.txt
+          python3 sherpa-onnx/scripts/text2token.py \
+            --tokens "$MODEL_DIR/tokens.txt" \
+            --tokens-type bpe \
+            --bpe-model "$MODEL_DIR/bpe.model" \
+            keywords_raw.txt "$ASSET_DIR/keywords.txt"
+          echo "Generated official Sherpa keyword file:"
+          cat "$ASSET_DIR/keywords.txt"
 
       - name: Set up Gradle for BEASTY
         run: |
