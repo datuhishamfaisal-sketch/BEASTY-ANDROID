@@ -22,7 +22,7 @@ public class ImageAssetHunter {
             try {
                 String endpoint = "https://commons.wikimedia.org/w/api.php?action=query&generator=search"
                         + "&gsrsearch=" + URLEncoder.encode(query, "UTF-8")
-                        + "&gsrnamespace=6&gsrlimit=5&prop=imageinfo"
+                        + "&gsrnamespace=6&gsrlimit=50&prop=imageinfo"
                         + "&iiprop=url%7Cextmetadata&iiurlwidth=1400&format=json";
                 HttpURLConnection connection = (HttpURLConnection) new URL(endpoint).openConnection();
                 connection.setRequestMethod("GET");
@@ -47,7 +47,7 @@ public class ImageAssetHunter {
                 JSONObject pages = queryObject == null ? null : queryObject.optJSONObject("pages");
                 if (pages == null) continue;
                 java.util.Iterator<String> keys = pages.keys();
-                while (keys.hasNext() && found.size() < 12) {
+                while (keys.hasNext()) {
                     JSONObject page = pages.optJSONObject(keys.next());
                     if (page == null) continue;
                     JSONArray infos = page.optJSONArray("imageinfo");
@@ -69,12 +69,10 @@ public class ImageAssetHunter {
             } catch (Exception ignored) {
                 // Try the next focused search phrase if one request fails.
             }
-            if (found.size() >= 8) break;
+            // Continue through all matching results.
         }
         StringBuilder assets = new StringBuilder();
-        int count = 0;
         for (JSONObject asset : found.values()) {
-            if (count++ >= 8) break;
             assets.append("\n- Title: ").append(asset.optString("title"))
                     .append("\n  Image URL: ").append(asset.optString("imageUrl"))
                     .append("\n  Source/license page: ").append(asset.optString("sourceUrl"))
