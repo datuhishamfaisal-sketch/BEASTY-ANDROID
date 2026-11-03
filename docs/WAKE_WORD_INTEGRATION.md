@@ -1,10 +1,10 @@
 # BEASTY Wake Word Integration (sherpa-onnx)
 
-Status: preparation branch only. Wake-word detection is NOT enabled in the app yet.
+Status: implementation added on `feature/sherpa-onnx-wakeword`; automated Android build and physical-device verification are still pending.
 
 ## Selected engine
 
-Use sherpa-onnx KeywordSpotter with the English Zipformer GigaSpeech KWS model:
+BEASTY uses sherpa-onnx KeywordSpotter with the English Zipformer GigaSpeech KWS model:
 
 - Model: sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01
 - Upstream model release: https://github.com/k2-fsa/sherpa-onnx/releases/tag/kws-models
@@ -12,32 +12,23 @@ Use sherpa-onnx KeywordSpotter with the English Zipformer GigaSpeech KWS model:
 - Android KWS sample: https://github.com/k2-fsa/sherpa-onnx/tree/master/android/SherpaOnnxKws
 - KWS documentation: https://k2-fsa.github.io/sherpa/onnx/kws/
 
-The KWS model supports custom phrases by generating a keywords file from the model's BPE tokenizer. The phrase planned for BEASTY is `HEY BEASTY`.
+## Current implementation
 
-## Required model assets
+- A GitHub Actions workflow builds the official sherpa-onnx Android AAR from upstream source and downloads the official Android native libraries.
+- The workflow downloads the matching English KWS model and generates the custom `HEY BEASTY` keyword tokens with that model's BPE tokenizer.
+- `WakeWordService.kt` runs local/offline keyword spotting from a microphone foreground service.
+- `MainActivity.java` has a user-controlled Hey BEASTY on/off control. When the wake phrase is detected, it hands over to the existing speech-recognition flow.
+- The foreground notification shows listening status and includes a stop action.
+- Existing Gemini, Groq, manual MIC, chat, and text-to-speech code is retained.
 
-The English model archive contains the encoder, decoder, joiner, `tokens.txt`, and `bpe.model`. For an Android app, the assets must be copied under:
+## Runtime and safety notes
 
-`app/src/main/assets/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01/`
+- Microphone permission must be granted before enabling wake-word detection.
+- Start the microphone foreground service from the visible app after a user action. Android background microphone restrictions still apply.
+- Wake-word detection is local; the wake phrase model does not need an API key or network connection.
+- The current model is English. Detection accuracy and sensitivity for different accents, devices, and noisy environments must be tested on a physical Android device.
+- The app must be tested for microphone hand-off, screen-off behavior, battery use, notification stop action, and restart after voice input before declaring the feature fully verified.
 
-The custom `keywords.txt` must be generated with the matching `tokens.txt` and `bpe.model`; do not hand-write token pieces.
+## Build
 
-## Required Android native library
-
-The app also needs sherpa-onnx Android native libraries for the target device ABI (at minimum `arm64-v8a`, ideally also `armeabi-v7a`). These are distributed in the upstream Android release archive. They must be placed in the app's `jniLibs/<abi>/` directories and paired with the matching Kotlin/Java API sources.
-
-## Integration safety
-
-- Do not start a microphone service until the native library and all model assets are present.
-- Keep the existing Gemini, Groq, manual MIC, and text-to-speech code intact.
-- Implement wake-word listening as a user-controlled foreground microphone service with a persistent notification and an explicit stop action.
-- On Android 14+ / target SDK 36, request microphone permission while the app is visible and start the microphone foreground service only from an allowed, user-initiated flow.
-- When the keyword is detected, stop/release the KWS stream and hand off to the existing voice interaction path; avoid opening a second microphone recorder at the same time.
-- Verify the build and test on a physical Android device before describing wake-word detection as working.
-
-## Current repository findings
-
-- `AndroidManifest.xml` already declares `.WakeWordService`, but that Java class is not present on the main branch.
-- `MainActivity.java` currently has a manual SpeechRecognizer MIC button and Gemini/Groq chat.
-- `app/build.gradle` currently has no sherpa-onnx dependency or Kotlin plugin.
-- This branch intentionally does not add a fake service or a placeholder dependency that could make the app fail to build.
+The workflow is `.github/workflows/android-build.yml`. It creates the Sherpa-ONNX AAR and packages the model assets during CI, then uploads a debug APK artifact named `BEASTY-debug-apk`.
