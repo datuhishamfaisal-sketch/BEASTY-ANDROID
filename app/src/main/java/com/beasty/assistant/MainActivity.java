@@ -83,6 +83,7 @@ public class MainActivity extends Activity {
 
     private boolean voiceEnabled = true;
     private boolean isThinking = false;
+    private boolean awaitingWebsiteGeneration = false;
 
     private final ArrayList<JSONObject> history = new ArrayList<>();
 
