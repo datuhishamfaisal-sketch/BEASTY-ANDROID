@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
         @Override public void onReceive(Context context, Intent intent) {
             if (WakeWordService.ACTION_WAKE_DETECTED.equals(intent.getAction())) {
                 wakeTriggered = true;
-                if (statusText != null) statusText.setText("● HEY BEASTY DETECTED");
+                if (statusText != null) statusText.setText("● HEY JARVIS DETECTED");
                 mainHandler.postDelayed(() -> startListening(), 900);
             }
         }
@@ -333,7 +333,7 @@ public class MainActivity extends Activity {
 
         root.addView(voiceRow);
 
-        wakeButton = createButton("HEY BEASTY: OFF", Color.rgb(45, 65, 90));
+        wakeButton = createButton("HEY JARVIS: OFF", Color.rgb(45, 65, 90));
         LinearLayout.LayoutParams wakeParams = new LinearLayout.LayoutParams(-1, dp(46));
         wakeParams.setMargins(dp(3), dp(2), dp(3), dp(5));
         root.addView(wakeButton, wakeParams);
@@ -982,7 +982,7 @@ public class MainActivity extends Activity {
             Intent stop = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_STOP);
             startService(stop);
             wakeWordEnabled = false;
-            wakeButton.setText("HEY BEASTY: OFF");
+            wakeButton.setText("HEY JARVIS: OFF");
             wakeButton.setBackground(shape(Color.rgb(45, 65, 90), Color.TRANSPARENT, 16));
             if (statusText != null) statusText.setText("● ONLINE");
             return;
@@ -1000,7 +1000,7 @@ public class MainActivity extends Activity {
             startForegroundService(start);
             wakeWordEnabled = true;
             if (wakeButton != null) {
-                wakeButton.setText("HEY BEASTY: ON • LISTENING");
+                wakeButton.setText("HEY JARVIS: ON • LISTENING");
                 wakeButton.setBackground(shape(Color.rgb(10, 75, 70), CYAN, 16));
             }
             if (statusText != null) statusText.setText("● LISTENING");
