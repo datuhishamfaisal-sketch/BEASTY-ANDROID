@@ -4,11 +4,16 @@ package com.beasty.assistant;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.Context;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.RecognitionListener;
@@ -40,6 +45,20 @@ public class MainActivity extends Activity {
     private Button sendButton;
     private Button micButton;
     private Button voiceButton;
+    private Button wakeButton;
+    private boolean wakeWordEnabled = false;
+    private boolean wakeTriggered = false;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
+    private final BroadcastReceiver wakeReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (WakeWordService.ACTION_WAKE_DETECTED.equals(intent.getAction())) {
+                wakeTriggered = true;
+                if (statusText != null) statusText.setText("● HEY BEASTY DETECTED");
+                mainHandler.postDelayed(() -> startListening(), 900);
+            }
+        }
+    };
     private Spinner modeSpinner;
     private ScrollView scrollView;
     private TextView statusText;
@@ -74,6 +93,7 @@ public class MainActivity extends Activity {
         createInterface();
         setupTextToSpeech();
         setupSpeechRecognition();
+        registerReceiver(wakeReceiver, new IntentFilter(WakeWordService.ACTION_WAKE_DETECTED), Context.RECEIVER_NOT_EXPORTED);
 
         addMessage(
                 "BEASTY",
@@ -264,6 +284,12 @@ public class MainActivity extends Activity {
         voiceRow.addView(voiceButton, voiceParams);
 
         root.addView(voiceRow);
+
+        wakeButton = createButton("HEY BEASTY: OFF", Color.rgb(45, 65, 90));
+        LinearLayout.LayoutParams wakeParams = new LinearLayout.LayoutParams(-1, dp(46));
+        wakeParams.setMargins(dp(3), dp(2), dp(3), dp(5));
+        root.addView(wakeButton, wakeParams);
+        wakeButton.setOnClickListener(v -> toggleWakeWord());
 
         // MESSAGE INPUT
 
@@ -857,17 +883,18 @@ public class MainActivity extends Activity {
 
             @Override
             public void onError(int error) {
-
                 runOnUiThread(() -> {
-
                     micButton.setText("🎙 MIC");
-
-                    Toast.makeText(
-                            MainActivity.this,
+                    Toast.makeText(MainActivity.this,
                             "Voice recognition error: " + error,
-                            Toast.LENGTH_SHORT
-                    ).show();
+                            Toast.LENGTH_SHORT).show();
                 });
+                if (wakeTriggered) {
+                    wakeTriggered = false;
+                    mainHandler.postDelayed(() -> {
+                        if (wakeWordEnabled) startWakeWordService();
+                    }, 1400);
+                }
             }
 
             @Override
@@ -881,12 +908,15 @@ public class MainActivity extends Activity {
                 if (matches != null && !matches.isEmpty()) {
 
                     runOnUiThread(() -> {
-
                         inputMessage.setText(matches.get(0));
-
-                        inputMessage.setSelection(
-                                inputMessage.getText().length()
-                        );
+                        inputMessage.setSelection(inputMessage.getText().length());
+                        if (wakeTriggered) {
+                            wakeTriggered = false;
+                            sendMessage();
+                            mainHandler.postDelayed(() -> {
+                                if (wakeWordEnabled) startWakeWordService();
+                            }, 1800);
+                        }
                     });
                 }
 
@@ -903,6 +933,39 @@ public class MainActivity extends Activity {
             public void onEvent(int eventType, Bundle params) {
             }
         });
+    }
+
+    private void toggleWakeWord() {
+        if (wakeWordEnabled) {
+            Intent stop = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_STOP);
+            startService(stop);
+            wakeWordEnabled = false;
+            wakeButton.setText("HEY BEASTY: OFF");
+            wakeButton.setBackground(shape(Color.rgb(45, 65, 90), Color.TRANSPARENT, 16));
+            if (statusText != null) statusText.setText("● ONLINE");
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, 101);
+            return;
+        }
+        startWakeWordService();
+    }
+
+    private void startWakeWordService() {
+        try {
+            Intent start = new Intent(this, WakeWordService.class).setAction(WakeWordService.ACTION_START);
+            startForegroundService(start);
+            wakeWordEnabled = true;
+            if (wakeButton != null) {
+                wakeButton.setText("HEY BEASTY: ON • LISTENING");
+                wakeButton.setBackground(shape(Color.rgb(10, 75, 70), CYAN, 16));
+            }
+            if (statusText != null) statusText.setText("● LISTENING");
+        } catch (Exception e) {
+            wakeWordEnabled = false;
+            Toast.makeText(this, "Wake word could not start: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
     }
 
     private void startListening() {
@@ -977,14 +1040,18 @@ public class MainActivity extends Activity {
         if (requestCode == MIC_PERMISSION
                 && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
             startListening();
+        }
+        if (requestCode == 101 && grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            startWakeWordService();
         }
     }
 
     @Override
     protected void onDestroy() {
 
+        try { unregisterReceiver(wakeReceiver); } catch (Exception ignored) {}
         if (speechRecognizer != null) {
             speechRecognizer.destroy();
         }
