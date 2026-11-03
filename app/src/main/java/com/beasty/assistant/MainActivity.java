@@ -554,6 +554,14 @@ public class MainActivity extends Activity {
 
         addMessage("YOU", message, true);
 
+        PersonalMemory personalMemory = new PersonalMemory(this);
+        String memoryCommandReply = personalMemory.handleCommand(message);
+        if (memoryCommandReply != null) {
+            addMessage("BEASTY", memoryCommandReply, false);
+            return;
+        }
+        personalMemory.rememberFromUserText(message);
+
         try {
             JSONObject userMessage = new JSONObject();
             userMessage.put("role", "user");
@@ -587,7 +595,8 @@ public class MainActivity extends Activity {
                 scrollView.fullScroll(View.FOCUS_DOWN)
         );
 
-        final String instruction = getModeInstruction();
+        final String instruction = getModeInstruction()
+                + new PersonalMemory(this).getContext();
 
         final JSONArray historySnapshot = new JSONArray();
 
