@@ -197,7 +197,7 @@ class WakeWordService : Service() {
                 }
                 override fun onError(error: Int) {
                     Log.w(TAG, "Speech recognition error: $error")
-                    releaseSpeechRecognizer()
+                    releaseSpeechRecognizer(cancel = false)
                     if (conversationActive && error != SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS) {
                         updateNotification("Listening again")
                         handler.postDelayed({ startConversationListening() }, 1300)
@@ -208,7 +208,7 @@ class WakeWordService : Service() {
                 override fun onResults(results: Bundle?) {
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     val spoken = matches?.firstOrNull()?.trim().orEmpty()
-                    releaseSpeechRecognizer()
+                    releaseSpeechRecognizer(cancel = false)
                     if (spoken.isEmpty()) {
                         if (conversationActive) handler.postDelayed({ startConversationListening() }, 700)
                         return
@@ -254,10 +254,10 @@ class WakeWordService : Service() {
         }
     }
 
-    private fun releaseSpeechRecognizer() {
+    private fun releaseSpeechRecognizer(cancel: Boolean = true) {
         val old = speechRecognizer
         speechRecognizer = null
-        try { old?.cancel() } catch (_: Throwable) {}
+        if (cancel) try { old?.cancel() } catch (_: Throwable) {}
         try { old?.destroy() } catch (_: Throwable) {}
     }
 
