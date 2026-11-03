@@ -152,8 +152,8 @@ class WakeWordService : Service() {
                     modelConfig = getKwsModelConfig(type = 1)
                         ?: throw IllegalStateException("English wake-word model config unavailable"),
                     keywordsFile = "$MODEL_DIR/keywords.txt",
-                    keywordsScore = 3.0f,
-                    keywordsThreshold = 0.1f
+                    keywordsScore = 1.5f,
+                    keywordsThreshold = 0.25f
                 )
                 val detector = KeywordSpotter(application.assets, config)
                 checkpoint("native_model_initialized")
@@ -186,6 +186,7 @@ class WakeWordService : Service() {
 
                 val buffer = ShortArray(1600)
                 var lastAudioDiagnosticAt = 0L
+                var lastDecodeDiagnosticAt = 0L
                 while (running) {
                     val count = microphone.read(buffer, 0, buffer.size)
                     if (count > 0) {
@@ -205,7 +206,17 @@ class WakeWordService : Service() {
                         detectorStream.acceptWaveform(samples, SAMPLE_RATE)
                         while (running && detector.isReady(detectorStream)) {
                             detector.decode(detectorStream)
-                            val keyword = detector.getResult(detectorStream).keyword
+                            val result = detector.getResult(detectorStream)
+                            val diagnosticNow = System.currentTimeMillis()
+                            if (diagnosticNow - lastDecodeDiagnosticAt >= 1500L) {
+                                getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+                                    .putString("wake_last_keyword", result.keyword)
+                                    .putString("wake_last_tokens", result.tokens.joinToString(" "))
+                                    .putLong("wake_last_decode_at", diagnosticNow)
+                                    .apply()
+                                lastDecodeDiagnosticAt = diagnosticNow
+                            }
+                            val keyword = result.keyword
                             if (keyword.isNotBlank()) {
                                 detector.reset(detectorStream)
                                 running = false
