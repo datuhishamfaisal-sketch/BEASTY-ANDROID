@@ -93,6 +93,11 @@ public class MainActivity extends Activity {
     private TextView statusText;
     private TextView thinkingView;
     private TextView coreGraphic;
+    private TextView orbitOuter;
+    private TextView orbitInner;
+    private android.animation.ObjectAnimator orbitOuterAnimator;
+    private android.animation.ObjectAnimator orbitInnerAnimator;
+    private int liveStatusStep = 0;
     private final Runnable thinkingPulse = new Runnable() {
         @Override public void run() {
             if (!isThinking || coreGraphic == null) return;
@@ -321,10 +326,44 @@ public class MainActivity extends Activity {
         modeSpinner.setAdapter(modeAdapter);
         modeSpinner.setVisibility(View.GONE);
 
+        // Animated radar-style BEASTY core: orbital rings rotate during live research.
+        FrameLayout coreStage = new FrameLayout(this);
+        LinearLayout.LayoutParams coreStageParams =
+                new LinearLayout.LayoutParams(-1, dp(190));
+        coreStage.setLayoutParams(coreStageParams);
+
+        orbitOuter = makeText("◌", 142, Color.rgb(0, 150, 170), true);
+        orbitOuter.setGravity(Gravity.CENTER);
+        orbitOuter.setShadowLayer(dp(14), 0, 0, CYAN);
+        FrameLayout.LayoutParams outerParams = new FrameLayout.LayoutParams(
+                dp(176), dp(176), Gravity.CENTER);
+        coreStage.addView(orbitOuter, outerParams);
+
+        orbitInner = makeText("◌", 112, Color.rgb(0, 210, 205), true);
+        orbitInner.setGravity(Gravity.CENTER);
+        FrameLayout.LayoutParams innerParams = new FrameLayout.LayoutParams(
+                dp(142), dp(142), Gravity.CENTER);
+        coreStage.addView(orbitInner, innerParams);
+
         coreGraphic = makeText("◎", 76, CYAN, true);
         coreGraphic.setGravity(Gravity.CENTER);
         coreGraphic.setShadowLayer(dp(18), 0, 0, CYAN);
-        root.addView(coreGraphic, new LinearLayout.LayoutParams(-1, dp(176)));
+        FrameLayout.LayoutParams coreParams = new FrameLayout.LayoutParams(
+                dp(112), dp(112), Gravity.CENTER);
+        coreStage.addView(coreGraphic, coreParams);
+        root.addView(coreStage, coreStageParams);
+
+        orbitOuterAnimator = android.animation.ObjectAnimator.ofFloat(
+                orbitOuter, View.ROTATION, 0f, 360f);
+        orbitOuterAnimator.setDuration(12000);
+        orbitOuterAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        orbitOuterAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
+
+        orbitInnerAnimator = android.animation.ObjectAnimator.ofFloat(
+                orbitInner, View.ROTATION, 360f, 0f);
+        orbitInnerAnimator.setDuration(7600);
+        orbitInnerAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        orbitInnerAnimator.setInterpolator(new android.view.animation.LinearInterpolator());
 
         // Conversation remains the main workspace.
         LinearLayout chatPanel = new LinearLayout(this);
@@ -406,6 +445,9 @@ public class MainActivity extends Activity {
             coreGraphic.setScaleX(1.0f);
             coreGraphic.setScaleY(1.0f);
             coreGraphic.setAlpha(0.82f);
+            if (orbitOuterAnimator != null && !orbitOuterAnimator.isRunning()) orbitOuterAnimator.start();
+            if (orbitInnerAnimator != null && !orbitInnerAnimator.isRunning()) orbitInnerAnimator.start();
+            if (inputMessage != null) inputMessage.setHint("Mencari data...");
             mainHandler.post(thinkingPulse);
         } else {
             coreGraphic.animate().cancel();
@@ -415,6 +457,11 @@ public class MainActivity extends Activity {
             coreGraphic.setScaleX(1.0f);
             coreGraphic.setScaleY(1.0f);
             coreGraphic.setAlpha(1.0f);
+            if (orbitOuterAnimator != null) orbitOuterAnimator.cancel();
+            if (orbitInnerAnimator != null) orbitInnerAnimator.cancel();
+            if (orbitOuter != null) orbitOuter.setRotation(0f);
+            if (orbitInner != null) orbitInner.setRotation(0f);
+            if (inputMessage != null) inputMessage.setHint("Ask BEASTY...");
         }
     }
 
@@ -1387,6 +1434,8 @@ public class MainActivity extends Activity {
 
         mainHandler.removeCallbacks(thinkingPulse);
         if (coreGraphic != null) coreGraphic.animate().cancel();
+        if (orbitOuterAnimator != null) orbitOuterAnimator.cancel();
+        if (orbitInnerAnimator != null) orbitInnerAnimator.cancel();
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();
