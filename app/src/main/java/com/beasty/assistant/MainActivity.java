@@ -508,9 +508,9 @@ public class MainActivity extends Activity {
         description.setHintTextColor(Color.GRAY);
         description.setMinLines(3);
         description.setGravity(Gravity.TOP);
-        android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(this)
+        new android.app.AlertDialog.Builder(this)
                 .setTitle("BEASTY WEB CREATOR")
-                .setMessage("Terangkan website yang Boss mahu bina. BEASTY akan cuba mencari gambar berlesen yang sesuai.")
+                .setMessage("Terangkan website yang Boss mahu bina. BEASTY akan mencari bahan visual yang sesuai dan memilih design secara automatik.")
                 .setView(description)
                 .setNegativeButton("BATAL", null)
                 .setPositiveButton("GENERATE", (d, which) -> {
@@ -519,24 +519,11 @@ public class MainActivity extends Activity {
                         Toast.makeText(this, "Sila masukkan penerangan website.", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    inputMessage.setText("BEASTY WEB CREATOR: Bina website berdasarkan keperluan ini: " + request);
+                    inputMessage.setText("BEASTY WEB CREATOR: Bina website berdasarkan keperluan ini: " + request
+                            + ". Cari dan padankan sendiri gambar berlesen serta pilihan visual yang sesuai. Jangan minta saya buka Google atau pilih bahan secara manual.");
                     sendMessage();
                 })
-                .create();
-        dialog.setButton(android.app.AlertDialog.BUTTON_NEUTRAL, "CARI CONTOH GOOGLE",
-                (d, which) -> {
-                    String query = description.getText().toString().trim();
-                    if (query.isEmpty()) query = "modern professional website design inspiration";
-                    try {
-                        String encoded = URLEncoder.encode(query + " website design inspiration", "UTF-8");
-                        Intent browser = new Intent(Intent.ACTION_VIEW,
-                                android.net.Uri.parse("https://www.google.com/search?q=" + encoded));
-                        startActivity(browser);
-                    } catch (Exception e) {
-                        Toast.makeText(this, "Tidak dapat membuka carian Google.", Toast.LENGTH_SHORT).show();
-                    }
-                });
-        dialog.show();
+                .show();
     }
 
     private void openLatestWebsitePreview() {
