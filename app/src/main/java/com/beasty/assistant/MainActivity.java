@@ -715,6 +715,7 @@ public class MainActivity extends Activity {
         new Thread(() -> {
 
             String answer = "";
+            String openAiError = "";
             String geminiError = "";
             String groqError = "";
             ImageAssetHunter imageHunter = new ImageAssetHunter();
@@ -732,7 +733,14 @@ public class MainActivity extends Activity {
             }
 
             try {
-                answer = callGemini(historySnapshot, enrichedInstruction);
+                answer = callOpenAI(historySnapshot, enrichedInstruction);
+            } catch (Exception e) {
+                openAiError = e.getMessage();
+            }
+
+            if (answer == null || answer.trim().isEmpty()) {
+                try {
+                    answer = callGemini(historySnapshot, enrichedInstruction);
 
             } catch (Exception e) {
                 geminiError = e.getMessage();
@@ -751,7 +759,8 @@ public class MainActivity extends Activity {
             if (answer == null || answer.trim().isEmpty()) {
 
                 answer = "BEASTY CONNECTION ERROR\n\n"
-                        + "GEMINI: " + geminiError
+                        + "OPENAI: " + openAiError
+                        + "\n\nGEMINI: " + geminiError
                         + "\n\nGROQ: " + groqError;
             }
 
@@ -805,6 +814,67 @@ public class MainActivity extends Activity {
             });
 
         }).start();
+    }
+
+
+    private String callOpenAI(JSONArray contents, String instruction) throws Exception {
+        String apiKey = BuildConfig.OPENAI_API_KEY;
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            throw new Exception("OpenAI API key missing. Add OPENAI_API_KEY to GitHub Actions secrets.");
+        }
+
+        JSONObject body = new JSONObject();
+        body.put("model", "gpt-6-luna");
+        body.put("instructions",
+                "You are BEASTY, powered by OpenAI. Be helpful, accurate and friendly. "
+                        + "Answer using the user's language. " + instruction
+                        + (instruction.contains("WEBSITE CREATOR TASK")
+                        ? " Return only valid JSON with the requested website fields."
+                        : " Use clear natural language and useful formatting."));
+
+        JSONArray input = new JSONArray();
+        for (int i = 0; i < contents.length(); i++) {
+            JSONObject item = contents.getJSONObject(i);
+            String text = item.optString("text", "");
+            if (text.trim().isEmpty()) continue;
+            String role = item.optString("role", "user");
+            input.put(new JSONObject()
+                    .put("role", role.equals("assistant") ? "assistant" : "user")
+                    .put("content", text));
+        }
+        body.put("input", input);
+
+        if (instruction.contains("BUSINESS_HUB_LIVE_RESEARCH")) {
+            body.put("tools", new JSONArray().put(new JSONObject().put("type", "web_search")));
+        }
+
+        String response = makeRequest("https://api.openai.com/v1/responses", body, apiKey);
+        JSONObject json = new JSONObject(response);
+        String outputText = json.optString("output_text", "");
+        if (outputText.trim().isEmpty()) {
+            JSONArray output = json.optJSONArray("output");
+            if (output != null) {
+                StringBuilder collected = new StringBuilder();
+                for (int i = 0; i < output.length(); i++) {
+                    JSONObject item = output.optJSONObject(i);
+                    if (item == null) continue;
+                    JSONArray content = item.optJSONArray("content");
+                    if (content == null) continue;
+                    for (int j = 0; j < content.length(); j++) {
+                        JSONObject part = content.optJSONObject(j);
+                        if (part == null) continue;
+                        String type = part.optString("type", "");
+                        if ("output_text".equals(type) || "text".equals(type)) {
+                            String value = part.optString("text", "");
+                            if (!value.isEmpty()) collected.append(value);
+                        }
+                    }
+                }
+                outputText = collected.toString();
+            }
+        }
+        if (outputText.trim().isEmpty()) throw new Exception("OpenAI returned empty response");
+        return outputText.trim();
     }
 
     private String callGemini(
