@@ -6,8 +6,13 @@ on:
     branches:
       - feature/sherpa-onnx-wakeword
 
+concurrency:
+  group: beasty-android-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
       - name: Checkout BEASTY
