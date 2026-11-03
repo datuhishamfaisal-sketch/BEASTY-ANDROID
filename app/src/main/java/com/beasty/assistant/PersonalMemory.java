@@ -125,6 +125,62 @@ public class PersonalMemory {
         return removed;
     }
 
+    /**
+     * Export only personal memory facts. API keys, chat history and diagnostics
+     * are deliberately excluded from this portable backup.
+     */
+    public synchronized JSONObject exportBackup() throws Exception {
+        JSONObject backup = new JSONObject();
+        backup.put("app", "BEASTY");
+        backup.put("formatVersion", 1);
+        backup.put("exportedAt", System.currentTimeMillis());
+        backup.put("facts", getFacts());
+        return backup;
+    }
+
+    /**
+     * Validate and merge a BEASTY memory backup without overwriting existing facts.
+     * Returns the number of newly restored facts.
+     */
+    public synchronized int restoreBackup(String jsonText) throws Exception {
+        if (jsonText == null || jsonText.trim().isEmpty()) {
+            throw new Exception("Fail backup kosong.");
+        }
+        JSONObject backup = new JSONObject(jsonText);
+        if (!"BEASTY".equals(backup.optString("app"))
+                || backup.optInt("formatVersion", -1) != 1
+                || !backup.has("facts") || !(backup.opt("facts") instanceof JSONArray)) {
+            throw new Exception("Format fail backup tidak sah atau tidak disokong.");
+        }
+
+        JSONArray incoming = backup.getJSONArray("facts");
+        if (incoming.length() > 500) throw new Exception("Terlalu banyak rekod dalam fail backup.");
+
+        JSONArray merged = getFacts();
+        int restored = 0;
+        for (int i = 0; i < incoming.length() && merged.length() < 40; i++) {
+            Object value = incoming.opt(i);
+            if (!(value instanceof String)) continue;
+            String fact = ((String) value).trim().replaceAll("\\s+", " ");
+            if (fact.length() < 8 || fact.length() > 240) continue;
+            if (isSensitive(fact.toLowerCase(Locale.ROOT))) continue;
+
+            boolean duplicate = false;
+            for (int j = 0; j < merged.length(); j++) {
+                if (fact.equalsIgnoreCase(merged.optString(j))) {
+                    duplicate = true;
+                    break;
+                }
+            }
+            if (!duplicate) {
+                merged.put(fact);
+                restored++;
+            }
+        }
+        prefs.edit().putString(DATA, merged.toString()).apply();
+        return restored;
+    }
+
     public synchronized void clear() {
         prefs.edit().remove(DATA).apply();
     }
