@@ -45,19 +45,29 @@ class WakeWordService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_STOP -> {
-                stopDetector()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-                return START_NOT_STICKY
+        try {
+            when (intent?.action) {
+                ACTION_STOP -> {
+                    stopDetector()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                ACTION_START, null -> {
+                    // Android 14–16 require the microphone foreground service to
+                    // be promoted while the app is visible and microphone access is granted.
+                    showNotification("Wake word standby — say Hey BEASTY")
+                    if (!running) startDetector()
+                }
             }
-            ACTION_START, null -> {
-                showNotification("Wake word standby — say Hey BEASTY")
-                if (!running) startDetector()
-            }
+            return START_STICKY
+        } catch (error: Throwable) {
+            running = false
+            android.util.Log.e("BEASTY_WAKE", "Unable to start microphone foreground service", error)
+            try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Throwable) {}
+            stopSelf(startId)
+            return START_NOT_STICKY
         }
-        return START_STICKY
     }
 
     private fun showNotification(message: String) {
