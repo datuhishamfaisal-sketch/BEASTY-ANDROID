@@ -411,6 +411,21 @@ public class MainActivity extends Activity {
         backupMemoryButton.setOnClickListener(v -> chooseMemoryBackupDestination());
         restoreMemoryButton.setOnClickListener(v -> chooseMemoryBackupFile());
 
+        LinearLayout creatorRow = new LinearLayout(this);
+        creatorRow.setOrientation(LinearLayout.HORIZONTAL);
+        creatorRow.setGravity(Gravity.CENTER);
+        creatorRow.setPadding(0, dp(2), 0, dp(4));
+        Button webCreatorButton = createButton("WEB CREATOR", Color.rgb(0, 105, 125));
+        Button previewWebsiteButton = createButton("PREVIEW WEBSITE", Color.rgb(45, 90, 115));
+        LinearLayout.LayoutParams creatorButtonParams =
+                new LinearLayout.LayoutParams(0, dp(44), 1);
+        creatorButtonParams.setMargins(dp(3), 0, dp(3), 0);
+        creatorRow.addView(webCreatorButton, creatorButtonParams);
+        creatorRow.addView(previewWebsiteButton, creatorButtonParams);
+        root.addView(creatorRow);
+        webCreatorButton.setOnClickListener(v -> showWebCreatorDialog());
+        previewWebsiteButton.setOnClickListener(v -> openLatestWebsitePreview());
+
         // MESSAGE INPUT
 
         LinearLayout inputRow = new LinearLayout(this);
