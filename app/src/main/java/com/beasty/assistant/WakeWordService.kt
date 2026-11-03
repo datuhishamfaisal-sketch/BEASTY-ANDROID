@@ -39,6 +39,16 @@ class WakeWordService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // Persist the last native startup checkpoint so a fatal JNI crash can be
+    // diagnosed after Android restarts the app (Throwable cannot catch SIGSEGV).
+    private fun checkpoint(stage: String) {
+        getSharedPreferences("beasty_diagnostics", MODE_PRIVATE).edit()
+            .putString("wake_last_stage", stage)
+            .putLong("wake_last_time", System.currentTimeMillis())
+            .apply()
+        android.util.Log.i("BEASTY_WAKE_DIAG", stage)
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -46,6 +56,7 @@ class WakeWordService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         try {
+            checkpoint("service_onStartCommand")
             when (intent?.action) {
                 ACTION_STOP -> {
                     stopDetector()
@@ -56,13 +67,16 @@ class WakeWordService : Service() {
                 ACTION_START, null -> {
                     // Android 14–16 require the microphone foreground service to
                     // be promoted while the app is visible and microphone access is granted.
+                    checkpoint("before_foreground_notification")
                     showNotification("Wake word standby — say Hey BEASTY")
+                    checkpoint("foreground_notification_started")
                     if (!running) startDetector()
                 }
             }
             return START_STICKY
         } catch (error: Throwable) {
             running = false
+            checkpoint("service_start_exception_${error.javaClass.simpleName}")
             android.util.Log.e("BEASTY_WAKE", "Unable to start microphone foreground service", error)
             try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Throwable) {}
             stopSelf(startId)
@@ -113,12 +127,15 @@ class WakeWordService : Service() {
     }
 
     private fun startDetector() {
+        checkpoint("before_detector_thread")
         running = true
         detectorThread = Thread {
             var localSpotter: KeywordSpotter? = null
             var localStream: com.k2fsa.sherpa.onnx.OnlineStream? = null
             var localRecorder: AudioRecord? = null
             try {
+                checkpoint("detector_thread_started")
+                checkpoint("before_native_model_init")
                 val config = KeywordSpotterConfig(
                     featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
                     modelConfig = getKwsModelConfig(type = 1)
@@ -126,12 +143,16 @@ class WakeWordService : Service() {
                     keywordsFile = "$MODEL_DIR/keywords.txt"
                 )
                 val detector = KeywordSpotter(application.assets, config)
+                checkpoint("native_model_initialized")
                 localSpotter = detector
                 spotter = detector
+                checkpoint("before_native_stream_create")
                 val detectorStream = detector.createStream()
+                checkpoint("native_stream_created")
                 localStream = detectorStream
                 stream = detectorStream
 
+                checkpoint("before_audio_record_init")
                 val minBuffer = AudioRecord.getMinBufferSize(
                     SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
                 )
@@ -146,7 +167,9 @@ class WakeWordService : Service() {
                     throw IllegalStateException("Microphone could not be initialized")
                 }
                 recorder = microphone
+                checkpoint("audio_record_initialized")
                 microphone.startRecording()
+                checkpoint("microphone_recording_started")
 
                 val buffer = ShortArray(1600)
                 while (running) {
@@ -169,6 +192,7 @@ class WakeWordService : Service() {
                 }
             } catch (e: Throwable) {
                 running = false
+                checkpoint("detector_exception_${e.javaClass.simpleName}")
                 android.util.Log.e("BEASTY_WAKE", "Wake-word detector crashed", e)
                 try {
                     showNotification("Wake word error: ${e.javaClass.simpleName}")
@@ -176,6 +200,7 @@ class WakeWordService : Service() {
                     android.util.Log.e("BEASTY_WAKE", "Could not update wake notification", notificationError)
                 }
             } finally {
+                checkpoint("detector_cleanup_started")
                 try { localRecorder?.stop() } catch (_: Throwable) {}
                 try { localRecorder?.release() } catch (_: Throwable) {}
                 try { localStream?.release() } catch (_: Throwable) {}
@@ -183,6 +208,7 @@ class WakeWordService : Service() {
                 if (recorder === localRecorder) recorder = null
                 if (stream === localStream) stream = null
                 if (spotter === localSpotter) spotter = null
+                checkpoint("detector_stopped")
             }
         }.apply {
             name = "BEASTY-WakeWord"
