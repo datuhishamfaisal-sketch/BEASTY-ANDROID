@@ -123,13 +123,15 @@ public class WebCreator {
         String html = project.html;
         String css = project.css == null ? "" : project.css;
         String js = project.javascript == null ? "" : project.javascript;
-        if (html.toLowerCase(java.util.Locale.ROOT).contains("</head>")) {
-            html = html.replaceFirst("(?i)</head>", "<style>" + css + "</style></head>");
+        int headEnd = html.toLowerCase(java.util.Locale.ROOT).indexOf("</head>");
+        if (headEnd >= 0) {
+            html = html.substring(0, headEnd) + "<style>" + css + "</style>" + html.substring(headEnd);
         } else {
             html = "<style>" + css + "</style>" + html;
         }
-        if (html.toLowerCase(java.util.Locale.ROOT).contains("</body>")) {
-            html = html.replaceFirst("(?i)</body>", "<script>" + js + "</script></body>");
+        int bodyEnd = html.toLowerCase(java.util.Locale.ROOT).lastIndexOf("</body>");
+        if (bodyEnd >= 0) {
+            html = html.substring(0, bodyEnd) + "<script>" + js + "</script>" + html.substring(bodyEnd);
         } else {
             html += "<script>" + js + "</script>";
         }
