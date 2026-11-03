@@ -23,6 +23,8 @@ class WakeWordService : Service() {
     companion object {
         const val ACTION_START = "com.beasty.assistant.WAKE_START"
         const val ACTION_STOP = "com.beasty.assistant.WAKE_STOP"
+        const val ACTION_PAUSE = "com.beasty.assistant.WAKE_PAUSE"
+        const val ACTION_RESUME = "com.beasty.assistant.WAKE_RESUME"
         const val ACTION_WAKE_DETECTED = "com.beasty.assistant.WAKE_DETECTED"
         const val EXTRA_WAKE_DETECTED = "wake_detected"
         private const val CHANNEL_ID = "beasty_wake_word"
@@ -63,6 +65,14 @@ class WakeWordService : Service() {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                     return START_NOT_STICKY
+                }
+                ACTION_PAUSE -> {
+                    stopDetector()
+                    showNotification("Microphone paused — voice command mode")
+                }
+                ACTION_RESUME -> {
+                    showNotification("Wake word standby — say Hey BEASTY")
+                    if (!running && detectorThread?.isAlive != true) startDetector()
                 }
                 ACTION_START, null -> {
                     // Android 14–16 require the microphone foreground service to
@@ -218,9 +228,21 @@ class WakeWordService : Service() {
 
     private fun stopDetector() {
         running = false
-        try { recorder?.stop() } catch (_: Exception) {}
-        detectorThread?.interrupt()
-        detectorThread = null
+        val activeRecorder = recorder
+        try { activeRecorder?.stop() } catch (_: Exception) {}
+
+        val oldThread = detectorThread
+        oldThread?.interrupt()
+        if (oldThread != null && oldThread !== Thread.currentThread()) {
+            try {
+                oldThread.join(1500)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+            }
+        }
+        if (oldThread == null || !oldThread.isAlive) {
+            detectorThread = null
+        }
     }
 
     override fun onDestroy() {
